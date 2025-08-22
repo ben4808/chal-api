@@ -1,10 +1,18 @@
 import { Router } from 'express';
-import { createChal, createSolve, getChal } from './Handlers';
+import { getCrosswordList } from '../handlers/getCrosswordList';
+import { getCrossword } from '../handlers/getCrossword';
+import { getCollectionList } from '../handlers/getCollectionList';
 
 const apiRouter = Router();
 
-apiRouter.post('/createChal', createChal);
-apiRouter.get('/getChal', getChal);
-apiRouter.post('/createSolve', createSolve);
+apiRouter.get('/getCrosswordList', getCrosswordList);
+apiRouter.get('/getCollectionList', getCollectionList);
+apiRouter.get('/getCrossword', getCrossword);
+//apiRouter.get('/getCollection', getCollection);
+//apiRouter.get('/getClue', getClue);
+//apiRouter.get('/getEntry', getEntry);
+//apiRouter.get('/generateEntryInfo', generateEntryInfo);
+//apiRouter.get('/queryEntries', queryEntries);
+//apiRouter.post('/createClue', createClue);
 
 export default apiRouter;
