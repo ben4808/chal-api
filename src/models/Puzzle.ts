@@ -1,6 +1,8 @@
+import { Publication } from "./Publication";
+
 export interface Puzzle {
-    id?: string
-    publicationId?: string;
+    id?: string;
+    publication: Publication;
     title: string;
     authors: string[];
     copyright: string;

@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
-import PostgresDao from "../daos/PostgresDao";
+import CruziDao from "../daos/CruziDao";
 import { StatusCodes } from 'http-status-codes';
 
-let dao = new PostgresDao();
+let dao = new CruziDao();
 
 /*
 Write an Express request handler getCollectionList that retrieves a list of clue collections.
@@ -21,13 +21,11 @@ export async function getCollectionList(req: Request, res: Response) {
         if (!user) {
             return res.status(StatusCodes.UNAUTHORIZED).json({ message: "Unauthorized access." });
         }
-        const collections = await dao.getClueCollections();
+        const collections = await dao.getCollectionList(user.id);
 
         if (!collections || collections.length === 0) {
             return res.status(StatusCodes.NOT_FOUND).json({ message: "No crosswords found for the specified date." });
         }
-
-        const 
 
         return res.status(StatusCodes.OK).json(collections);
     } catch (error) {

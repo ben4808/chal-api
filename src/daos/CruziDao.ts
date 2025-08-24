@@ -1,107 +1,299 @@
 import { Clue } from "../models/Clue";
 import { ClueCollection } from "../models/ClueCollection";
-import { CollectionProgressData } from "../models/CollectionProgressData";
 import { Entry } from "../models/Entry";
-import { EntryFilter } from "../models/EntryFilter";
-import { User } from "../models/User";
+import { EntryQueryParams } from "../models/EntryQueryParams";
 import { ICruziDao } from "./ICruziDao";
 import { sqlQuery } from "./postgres";
 
-export class CruziDao implements ICruziDao {
-  async getCrosswordList(date: Date): Promise<ClueCollection[]> {
-    puzzle.id = puzzle.id || generateId();
+// Helper function to map 'user' fields from the raw creator object
+const mapCreator = (creator: any) => {
+    if (!creator) return undefined;
+    return {
+        id: creator.creator_id,
+        firstName: creator.creator_first_name,
+        lastName: creator.creator_last_name,
+        email: creator.email || undefined,
+    };
+};
 
-    await sqlQuery(true, "add_puzzle", [
-        {name: "p_puzzle_id", value: puzzle.id},
-        {name: "p_publication_id", value: puzzle.publicationId},
-        {name: "p_date", value: puzzle.date},
-        {name: "p_author", value: puzzle.authors.join(", ")},
-        {name: "p_title", value: puzzle.title},
-        {name: "p_copyright", value: puzzle.copyright},
-        {name: "p_notes", value: puzzle.notes},
-        {name: "p_width", value: puzzle.width},
-        {name: "p_height", value: puzzle.height},
-        {name: "p_source_link", value: puzzle.sourceLink},
-    ]);
-  }
+// Helper function to map 'progressData' for ClueCollection from the raw user_progress object
+const mapCollectionProgressData = (progress: any) => {
+    if (!progress) return undefined;
+    return {
+        unseen: progress.unseen,
+        inProgress: progress.in_progress,
+        completed: progress.completed,
+    };
+};
 
-  async getCollectionProgress(collectionId: string, user?: User): Promise<CollectionProgressData> {
-    // Example: Fetch progress from the database
-    const progress = await this.db.collectionProgress.findFirst({
-      where: { collectionId, userId: user?.id },
-    });
-    return progress as CollectionProgressData;
-  }
+// Helper function to map 'progressData' for Clue from the raw user_progress object
+const mapClueProgressData = (progress: any) => {
+    if (!progress) return undefined;
+    return {
+        totalSolves: progress.total_solves,
+        correctSolves: progress.correct_solves,
+        incorrectSolves: progress.incorrect_solves,
+        lastSolve: progress.last_solve ? new Date(progress.last_solve) : undefined,
+    };
+};
 
-  async getCrosswordId(source: string, date: Date): Promise<string> {
-    // Example: Find crossword by source and date
-    const crossword = await this.db.crosswords.findFirst({
-      where: { source, date: date.toISOString().slice(0, 10) },
-      select: { id: true },
-    });
-    return crossword?.id ?? "";
-  }
+class CruziDao implements ICruziDao {
+    // Maps get_crosswords_list result to ClueCollection[]
+    public async getCrosswordList(date: Date): Promise<ClueCollection[]> {
+        const result = await sqlQuery(true, 'get_crosswords_list', [
+            { name: 'p_date', value: date.toISOString().split('T')[0] }
+        ]);
 
-  async populateClues(collection: ClueCollection): Promise<ClueCollection> {
-    // Example: Populate clues for a collection
-    const clues = await this.db.clues.findMany({
-      where: { collectionId: collection.id },
-    });
-    collection.clues = clues;
-    return collection;
-  }
+        if (!result || result.length === 0 || !result[0].jsonb_agg) {
+            return [];
+        }
 
-  async populateClueProgress(collection: ClueCollection, user?: User): Promise<ClueCollection> {
-    // Example: Attach progress to each clue
-    if (!user) return collection;
-    const clueIds = collection.clues.map((clue) => clue.id);
-    const progresses = await this.db.clueProgress.findMany({
-      where: { clueId: { in: clueIds }, userId: user.id },
-    });
-    const progressMap = new Map(progresses.map((p: any) => [p.clueId, p]));
-    collection.clues = collection.clues.map((clue) => ({
-      ...clue,
-      progress: progressMap.get(clue.id) || null,
-    }));
-    return collection;
-  }
+        const rawData = result[0].jsonb_agg;
+        return rawData.map((raw: any) => ({
+            id: raw.id,
+            title: raw.title,
+            author: raw.author,
+            createdDate: new Date(raw.created_date),
+            modifiedDate: raw.modified_date ? new Date(raw.modified_date) : new Date(raw.created_date),
+            isPrivate: raw.is_private ?? false,
+            metadata1: raw.metadata1,
+            metadata2: raw.metadata2,
+            puzzle: {
+                id: raw.puzzle_id,
+                width: raw.width,
+                height: raw.height,
+                publication: {
+                    id: raw.publication_id,
+                    name: raw.publication_name,
+                },
+            }
+        } as ClueCollection));
+    }
 
-  async getCollectionList(user: User): Promise<ClueCollection[]> {
-    // Implementation to fetch collection list for the user
-    return [];
-  }
+    // Maps get_clue_collections result to ClueCollection[]
+    public async getCollectionList(userId?: string): Promise<ClueCollection[]> {
+        const result = await sqlQuery(true, 'get_clue_collections', [
+            { name: 'p_user_id', value: userId || null }
+        ]);
 
-  async getCrossword(source?: string, date?: Date, collectionId?: string): Promise<ClueCollection> {
-    // Implementation to fetch a crossword based on source, date, or collectionId
-    return {} as ClueCollection;
-  }
+        if (!result || result.length === 0 || !result[0].jsonb_agg) {
+            return [];
+        }
 
-  async getCollection(collectionId: string): Promise<ClueCollection> {
-    // Implementation to fetch a specific collection by ID
-    return {} as ClueCollection;
-  }
+        const rawData = result[0].jsonb_agg;
+        return rawData.map((raw: any) => ({
+            id: raw.id,
+            title: raw.title,
+            author: raw.author,
+            description: raw.description,
+            isPrivate: raw.is_private,
+            createdDate: new Date(raw.created_date),
+            modifiedDate: raw.modified_date ? new Date(raw.modified_date) : new Date(raw.created_date),
+            metadata1: raw.metadata1,
+            metadata2: raw.metadata2,
+            creator: mapCreator(raw.creator),
+            progressData: mapCollectionProgressData(raw.user_progress),
+            clues: [],
+            clueCount: 0,
+        } as ClueCollection));
+    }
 
-  async getSingleClue(clueId: number): Promise<Clue> {
-    // Implementation to fetch a single clue by ID
-    return {} as Clue;
-  }
+    // Maps get_crossword_id result to string (collectionId)
+    public async getCrosswordId(source: string, date: Date): Promise<string | null> {
+        const result = await sqlQuery(true, 'get_crossword_id', [
+            { name: 'p_date', value: date.toISOString().split('T')[0] },
+            { name: 'p_publication_id', value: source }
+        ]);
 
-  async createSingleClue(clue: Clue): Promise<Clue> {
-    // Implementation to create a single clue and return its ID
-    return {} as Clue;
-  }
+        if (!result || result.length === 0 || !result[0].get_crossword_id) {
+            return null;
+        }
 
-  async getEntry(entry: string): Promise<Entry> {
-    // Implementation to fetch entry information
-    return {} as Entry;
-  }
+        return result[0].get_crossword_id.collection_id;
+    }
 
-  async addToEntryInfoQueue(entry: string): Promise<void> {
-    // Implementation to generate entry information
-  }
+    // Maps get_collection result to ClueCollection
+    public async getCollection(collectionId: string): Promise<ClueCollection | null> {
+        const result = await sqlQuery(true, 'get_collection', [
+            { name: 'p_collection_id', value: collectionId }
+        ]);
 
-  async queryEntries(query: string, filters: EntryFilter[]): Promise<Entry[]> {
-    // Implementation to query entries based on the provided filters
-    return [];
-  }
+        if (!result || result.length === 0 || !result[0].get_collection) {
+            return null;
+        }
+
+        const raw = result[0].get_collection;
+        return {
+            id: raw.id,
+            title: raw.title,
+            author: raw.author,
+            description: raw.description,
+            isPrivate: raw.is_private ?? false,
+            createdDate: new Date(raw.created_date),
+            modifiedDate: raw.modified_date ? new Date(raw.modified_date) : new Date(raw.created_date),
+            metadata1: raw.metadata1,
+            metadata2: raw.metadata2,
+            creator: mapCreator(raw.creator),
+            puzzle: raw.puzzle_id ? { id: raw.puzzle_id } : undefined,
+            clues: [],
+            clueCount: 0,
+        } as ClueCollection;
+    }
+
+    // Maps get_clues result to Clue[]
+    public async getClues(collectionId: string, userId?: string): Promise<Clue[]> {
+        const result = await sqlQuery(true, 'get_clues', [
+            { name: 'p_collection_id', value: collectionId },
+            { name: 'p_user_id', value: userId || null }
+        ]);
+
+        if (!result || result.length === 0 || !result[0].clues_json) {
+            return [];
+        }
+
+        const rawData = result[0].clues_json;
+        return rawData.map((raw: any) => ({
+            id: raw.id,
+            clue: raw.clue,
+            entry: {
+                entry: raw.entry,
+                lang: raw.lang,
+            } as Entry,
+            lang: raw.lang,
+            source: raw.source,
+            metadata1: raw.metadata1,
+            metadata2: raw.metadata2,
+            progressData: mapClueProgressData(raw.user_progress),
+        } as Clue));
+    }
+
+    // Maps get_single_clue result to Clue
+    public async getSingleClue(clueId: string): Promise<Clue | null> {
+        const result = await sqlQuery(true, 'get_single_clue', [
+            { name: 'p_clue_id', value: clueId }
+        ]);
+
+        if (!result || result.length === 0 || !result[0].get_single_clue) {
+            return null;
+        }
+
+        const raw = result[0].get_single_clue;
+        return {
+            id: raw.id,
+            clue: raw.clue,
+            entry: {
+                entry: raw.entry,
+                lang: raw.lang,
+            } as Entry,
+            lang: raw.lang,
+            source: raw.source,
+        } as Clue;
+    }
+
+    // Calls upsert_single_clue
+    public async updateSingleClue(clue: Clue): Promise<Clue> {
+        const clueData = {
+            id: clue.id,
+            entry: clue.entry.entry,
+            lang: clue.lang || clue.entry.lang,
+            clue: clue.clue,
+            source: clue.source,
+        };
+
+        const result = await sqlQuery(true, 'upsert_single_clue', [
+            { name: 'clue_data', value: clueData }
+        ]);
+
+        if (!result || result.length === 0 || !result[0].upsert_single_clue) {
+            throw new Error('Failed to upsert clue.');
+        }
+
+        const raw = result[0].get_single_clue;
+        return {
+            id: raw.id,
+            clue: raw.clue,
+            entry: {
+                entry: raw.entry,
+                lang: raw.lang,
+            } as Entry,
+            lang: raw.lang,
+            source: raw.source,
+        } as Clue;
+    }
+
+    // Maps get_entry result to Entry
+    public async getEntry(entry: string): Promise<Entry | null> {
+        const result = await sqlQuery(true, 'get_entry', [
+            { name: 'p_entry', value: entry }
+        ]);
+
+        if (!result || result.length === 0 || !result[0].get_entry) {
+            return null;
+        }
+
+        const raw = result[0].get_entry;
+        return {
+            entry: raw.entry,
+            lang: raw.lang,
+            length: raw.length,
+            displayText: raw.display_text,
+            entryType: raw.entry_type,
+            obscurityScore: raw.obscurity_score,
+            qualityScore: raw.quality_score,
+            senses: raw.senses ? raw.senses.map((sense: any) => ({
+                id: sense.id,
+                summary: sense.summary,
+                definition: sense.definition,
+                obscurityScore: sense.obscurity_score,
+                qualityScore: sense.quality_score,
+                sourceAi: sense.source_ai,
+                exampleSentences: sense.example_sentences ? sense.example_sentences.map((ex: any) => ({
+                    id: ex.id,
+                    sentence: ex.sentence,
+                    translatedSentence: ex.translated_sentence,
+                    sourceAi: ex.source_ai,
+                })) : [],
+            })) : [],
+        } as Entry;
+    }
+
+    // Calls add_to_entry_queue
+    public async addToEntryInfoQueue(entry: string): Promise<void> {
+        await sqlQuery(true, 'add_to_entry_queue', [
+            { name: 'p_entry', value: entry }
+        ]);
+    }
+
+    // Maps query_entries result to Entry[]
+    public async queryEntries(params: EntryQueryParams): Promise<Entry[]> {
+        const jsonbParams = {
+            query: params.query,
+            lang: params.lang,
+            minFamiliarityScore: params.minFamiliarityScore,
+            maxFamiliarityScore: params.maxFamiliarityScore,
+            minQualityScore: params.minQualityScore,
+            maxQualityScore: params.maxQualityScore,
+            filters: params.filters,
+        };
+
+        const result = await sqlQuery(true, 'query_entries', [
+            { name: 'params', value: jsonbParams }
+        ]);
+
+        if (!result || result.length === 0) {
+            return [];
+        }
+
+        return result.map((raw: any) => ({
+            entry: raw.entry,
+            lang: raw.lang,
+            length: raw.length,
+            displayText: raw.display_text,
+            entryType: raw.entry_type,
+            obscurityScore: raw.familiarity_score,
+            qualityScore: raw.quality_score,
+        } as Entry));
+    }
 }
+
+export default CruziDao;

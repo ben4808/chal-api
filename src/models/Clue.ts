@@ -1,3 +1,4 @@
+import { ClueProgressData } from "./ClueProgressData";
 import { Entry } from "./Entry";
 
 export interface Clue {
@@ -10,5 +11,5 @@ export interface Clue {
     metadata2?: string;
 
     translatedClues?: Map<string, string>; // <lang, clue>
-    
+    progressData?: ClueProgressData;
 };

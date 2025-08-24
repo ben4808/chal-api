@@ -18,6 +18,6 @@ export interface ClueCollection {
     metadata2?: string;
 
     progressData?: CollectionProgressData;
-    clueCount: number;
-    clues: Clue[];
+    clueCount?: number;
+    clues?: Clue[];
 };
