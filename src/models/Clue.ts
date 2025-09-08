@@ -1,11 +1,9 @@
 import { ClueProgressData } from "./ClueProgressData";
-import { Entry } from "./Entry";
 
 export interface Clue {
     id?: string;
-    clue: string;
-    entry: Entry;
-    lang: string;
+    clue?: string;
+    customDisplayText?: string; // override for display text
     source?: string;  // crossword, book, etc.
     metadata1?: string;  // puzzle index
     metadata2?: string;

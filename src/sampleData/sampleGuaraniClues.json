@@ -1,0 +1,354 @@
+[
+  {
+    "entry": {
+      "entry": "CHOKOLÁTE",
+      "lang": "gn",
+      "displayText": "chokoláte",
+      "entryType": "word"
+    },
+    "senses": [
+      {
+        "partOfSpeech": "noun",
+        "commonness": "primary",
+        "summary": {
+          "es": "pasta de cacao y azúcar",
+          "en": "cocoa and sugar paste"
+        },
+        "definition": {
+          "es": "Pasta hecha con cacao y azúcar molidos, a la que generalmente se añade canela o vainilla.",
+          "en": "Paste made from ground cocoa and sugar, to which cinnamon or vanilla is usually added."
+        },
+        "examplesSentences": [
+          {
+            "es": "Se preparó chocolate con café para el desayuno.",
+            "en": "Chocolate with coffee was prepared for breakfast.",
+            "gn": "Ojejapo {{chokoláte}} kafe rehe rambosahagua."
+          },
+          {
+            "es": "El chocolate de gallina se ofrece antes de la ceremonia.",
+            "en": "The chicken chocolate is offered before the ceremony.",
+            "gn": "{{Chokoláte}} ryguasundie oñeme'ẽ aretepe."
+          },
+          {
+            "es": "Esa niña prefiere el chocolate con té.",
+            "en": "That girl prefers chocolate with tea.",
+            "gn": "Pe mitãkuña oiporavo {{chokoláte}} ka'ay rehe."
+          }
+        ],
+        "translations": {
+          "es": {
+            "naturalTranslations": ["chocolate", "cacao"],
+            "colloquialTranslations": ["dulce", "bombón"],
+            "source_ai": "VSCode"
+          },
+          "en": {
+            "naturalTranslations": ["chocolate", "cocoa"],
+            "colloquialTranslations": ["sweet", "candy"],
+            "source_ai": "VSCode"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "entry": {
+      "entry": "HAYHU",
+      "lang": "gn",
+      "displayText": "hayhu",
+      "entryType": "word"
+    },
+    "senses": [
+      {
+        "partOfSpeech": "verb",
+        "commonness": "primary",
+        "summary": {
+          "es": "amar, querer",
+          "en": "to love, to care for"
+        },
+        "definition": {
+          "es": "Expresar amor o cariño hacia una persona, lugar o cosa.",
+          "en": "To express love or affection towards a person, place, or thing."
+        },
+        "examplesSentences": [
+          {
+            "es": "Amo a mi amigo que va al monte.",
+            "en": "I love my friend who goes to the forest.",
+            "gn": "Che {{ahayhu}} che irũ ka'aguyre ohóvo."
+          },
+          {
+            "es": "Ella ama mucho a su hija por las tardes.",
+            "en": "She loves her daughter a lot in the afternoons.",
+            "gn": "Ha'e {{ohayhu}} heta itajy asajepe."
+          },
+          {
+            "es": "Nosotros amamos nuestra tierra donde trabajamos.",
+            "en": "We love our land where we work.",
+            "gn": "Ñande {{jahayhu}} ñande yvy romba'apóvape."
+          }
+        ],
+        "translations": {
+          "es": {
+            "naturalTranslations": ["amar", "querer"],
+            "colloquialTranslations": ["gustar", "apreciar"],
+            "source_ai": "VSCode"
+          },
+          "en": {
+            "naturalTranslations": ["love", "care for"],
+            "colloquialTranslations": ["like", "appreciate"],
+            "source_ai": "VSCode"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "entry": {
+      "entry": "MOÑE'Ẽ",
+      "lang": "gn",
+      "displayText": "moñe'ẽ",
+      "entryType": "word"
+    },
+    "senses": [
+      {
+        "partOfSpeech": "verb",
+        "commonness": "primary",
+        "summary": {
+          "es": "leer",
+          "en": "to read"
+        },
+        "definition": {
+          "es": "Interpretar o pronunciar en voz alta un texto escrito.",
+          "en": "To interpret or read aloud written text."
+        },
+        "examplesSentences": [
+          {
+            "es": "Leí un libro anoche.",
+            "en": "I read a book last night.",
+            "gn": "Che {{amoñe'ẽ}} peteĩ kuatiañe'ẽ kuehe pyhare."
+          },
+          {
+            "es": "El maestro lee mucho en guaraní.",
+            "en": "The teacher reads a lot in Guaraní.",
+            "gn": "Mbo'ehára {{omoñe'ẽ}} heta ñe'ẽ guaraniha."
+          },
+          {
+            "es": "Los niños leen un libro sobre plantas en la escuela.",
+            "en": "The children read a book about plants at school.",
+            "gn": "Mitãkuera {{omoñe'ẽ}} kuatia yvyratype mbo'ehaópe."
+          }
+        ],
+        "translations": {
+          "es": {
+            "naturalTranslations": ["leer", "lectura"],
+            "colloquialTranslations": ["ojear", "repasar"],
+            "source_ai": "VSCode"
+          },
+          "en": {
+            "naturalTranslations": ["read", "reading"],
+            "colloquialTranslations": ["browse", "scan"],
+            "source_ai": "VSCode"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "entry": {
+      "entry": "KUATIAÑE'Ẽ",
+      "lang": "gn",
+      "displayText": "kuatiañe'ẽ",
+      "entryType": "word"
+    },
+    "senses": [
+      {
+        "partOfSpeech": "noun",
+        "commonness": "primary",
+        "summary": {
+          "es": "libro",
+          "en": "book"
+        },
+        "definition": {
+          "es": "Conjunto de hojas impresas o escritas, encuadernadas, que contienen texto o información.",
+          "en": "A set of printed or written pages, bound together, containing text or information."
+        },
+        "examplesSentences": [
+          {
+            "es": "Mi libro llegó anoche para leer.",
+            "en": "My book arrived last night for reading.",
+            "gn": "Che {{kuatiañe'ẽ}} oguahẽ kuehe pyhare oñemoñe'ẽravo."
+          },
+          {
+            "es": "Un libro nuevo se encuentra en la biblioteca de la escuela.",
+            "en": "A new book is found in the school library.",
+            "gn": "{{Kuatiañe'ẽ}} pyahu ojejuhu mbo'ehaope."
+          },
+          {
+            "es": "Puso el libro sobre la mesa para leer.",
+            "en": "She put the book on the table to read.",
+            "gn": "Oñemoĩ {{kuatiañe'ẽ}} mesa ári oñemoñe'ẽvo."
+          }
+        ],
+        "translations": {
+          "es": {
+            "naturalTranslations": ["libro", "texto"],
+            "colloquialTranslations": ["tomo", "volumen"],
+            "source_ai": "VSCode"
+          },
+          "en": {
+            "naturalTranslations": ["book", "volume"],
+            "colloquialTranslations": ["tome", "read"],
+            "source_ai": "VSCode"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "entry": {
+      "entry": "JEROKY",
+      "lang": "gn",
+      "displayText": "jeroky",
+      "entryType": "word"
+    },
+    "senses": [
+      {
+        "partOfSpeech": "verb",
+        "commonness": "primary",
+        "summary": {
+          "es": "bailar",
+          "en": "to dance"
+        },
+        "definition": {
+          "es": "Mover el cuerpo al ritmo de la música, generalmente en un evento social o festivo.",
+          "en": "To move the body to the rhythm of music, usually at a social or festive event."
+        },
+        "examplesSentences": [
+          {
+            "es": "Nosotros bailamos en una gran fiesta.",
+            "en": "We danced at a big party.",
+            "gn": "Ñande {{jajeroky}} peteĩ arete guasúpe."
+          },
+          {
+            "es": "La niña baila chamamé con alegría.",
+            "en": "The girl dances chamamé with joy.",
+            "gn": "Mitãkuña {{ojeroky}} chamamé vyape."
+          },
+          {
+            "es": "Él bailó polka anoche en el bosque.",
+            "en": "He danced polka last night in the forest.",
+            "gn": "Ha'e {{ojeroky}} polka pyharekue ka'aguýpe."
+          }
+        ],
+        "translations": {
+          "es": {
+            "naturalTranslations": ["bailar", "danza"],
+            "colloquialTranslations": ["moverse", "menearse"],
+            "source_ai": "VSCode"
+          },
+          "en": {
+            "naturalTranslations": ["dance", "dancing"],
+            "colloquialTranslations": ["boogie", "groove"],
+            "source_ai": "VSCode"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "entry": {
+      "entry": "ARETE",
+      "lang": "gn",
+      "displayText": "arete",
+      "entryType": "word"
+    },
+    "senses": [
+      {
+        "partOfSpeech": "noun",
+        "commonness": "primary",
+        "summary": {
+          "es": "fiesta",
+          "en": "party"
+        },
+        "definition": {
+          "es": "Celebración o evento social donde las personas se reúnen para disfrutar, bailar o compartir.",
+          "en": "A celebration or social event where people gather to enjoy, dance, or share."
+        },
+        "examplesSentences": [
+          {
+            "es": "La fiesta se realiza esta tarde.",
+            "en": "The party is happening this afternoon.",
+            "gn": "Pe {{arete}} oikota ka'aruete."
+          },
+          {
+            "es": "Nuestra fiesta se organiza en el monte.",
+            "en": "Our party is organized in the forest.",
+            "gn": "Ñande {{arete}} ojejapota ka'aguype."
+          },
+          {
+            "es": "Una gran fiesta tuvo lugar en mi casa anoche.",
+            "en": "A big party took place at my house last night.",
+            "gn": "{{Arete}} guasu oikokuri che rogape kuehepyhare."
+          }
+        ],
+        "translations": {
+          "es": {
+            "naturalTranslations": ["fiesta", "celebración"],
+            "colloquialTranslations": ["juerga", "reunión"],
+            "source_ai": "VSCode"
+          },
+          "en": {
+            "naturalTranslations": ["party", "celebration"],
+            "colloquialTranslations": ["bash", "gathering"],
+            "source_ai": "VSCode"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "entry": {
+      "entry": "KANE'Õ",
+      "lang": "gn",
+      "displayText": "kane'õ",
+      "entryType": "word"
+    },
+    "senses": [
+      {
+        "partOfSpeech": "adjective",
+        "commonness": "primary",
+        "summary": {
+          "es": "cansado",
+          "en": "tired"
+        },
+        "definition": {
+          "es": "Estado de fatiga o agotamiento físico o mental después de una actividad.",
+          "en": "A state of physical or mental fatigue after an activity."
+        },
+        "examplesSentences": [
+          {
+            "es": "Estoy cansado después de caminar en el bosque.",
+            "en": "I'm tired after walking in the forest.",
+            "gn": "Che {{chekane'õ}} aguata rire ka'aguýpe."
+          },
+          {
+            "es": "Ella está muy cansada después de cocinar.",
+            "en": "She is very tired after cooking.",
+            "gn": "Ha'e {{ikane'õ}} heta ojapo cenagua rire."
+          }
+        ],
+        "translations": {
+          "es": {
+            "naturalTranslations": ["cansado", "fatigado"],
+            "colloquialTranslations": ["agotado", "rendido"],
+            "source_ai": "VSCode"
+          },
+          "en": {
+            "naturalTranslations": ["tired", "weary"],
+            "colloquialTranslations": ["exhausted", "worn out"],
+            "source_ai": "VSCode"
+          }
+        }
+      }
+    ]
+  }
+]

@@ -1,14 +1,13 @@
-import { Entry } from "./Entry";
 import { EntryTranslation } from "./EntryTranslation";
 
 export interface Sense {
-  id: string;
-  entry: Entry;
-  lang: string;
-  summary: string;
-  definition?: string;
-  exampleSentences?: string[];
+  id?: string;
+  partOfSpeech?: string;
+  commonness?: string;
+  summary: Map<string, string>; // <lang, summary>
+  definition?: Map<string, string>; // <lang, definition>
+  exampleSentences?: [Map<string, string>]; // array of <lang, example sentence>
+  translations?: Map<string, EntryTranslation>; // <lang, EntryTranslation>
   familiarityScore?: number;
   qualityScore?: number;
-  translations: EntryTranslation;
 }

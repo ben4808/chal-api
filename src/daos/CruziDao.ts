@@ -2,6 +2,7 @@ import { Clue } from "../models/Clue";
 import { ClueCollection } from "../models/ClueCollection";
 import { Entry } from "../models/Entry";
 import { EntryQueryParams } from "../models/EntryQueryParams";
+import { Sense } from "../models/Sense";
 import { ICruziDao } from "./ICruziDao";
 import { sqlQuery } from "./postgres";
 
@@ -38,6 +39,59 @@ const mapClueProgressData = (progress: any) => {
 };
 
 class CruziDao implements ICruziDao {
+    public async addClueToCollection(collectionId: string, clue: Clue): Promise<Clue> {
+        const clueData = {
+            collectionId: collectionId,
+            clue: clue.clue,
+            customDisplayText: clue.customDisplayText,
+            source: clue.source,
+        };
+
+        return await sqlQuery(true, 'add_clue_to_collection', [
+            { name: 'clue_data', value: clueData }
+        ]).then(result => {
+            if (!result || result.length === 0 || !result[0].add_clue_to_collection) {
+                throw new Error('Failed to add clue to collection.');
+            }
+        });
+    }
+
+    public async addOrUpdateEntry(entry: Entry): Promise<Entry> {
+        const entryData = {
+            entry: entry.entry,
+            lang: entry.lang,
+            rootEntry: entry.rootEntry,
+            displayText: entry.displayText,
+            entryType: entry.entryType,
+        };  
+        return await sqlQuery(true, 'upsert_entry', [
+            { name: 'entry_data', value: entryData }
+        ]).then(result => {
+            if (!result || result.length === 0 || !result[0].upsert_entry) {
+                throw new Error('Failed to upsert entry.');
+            }
+          });
+    }
+
+    public async addOrUpdateSense(sense: Sense): Promise<Sense> {
+        const senseData = {
+            partOfSpeech: sense.partOfSpeech,
+            commonness: sense.commonness,
+            summary: sense.summary,
+            definition: sense.definition,
+            exampleSentences: sense.exampleSentences
+        };
+
+        return await sqlQuery(true, 'upsert_sense', [
+            { name: 'sense_data', value: senseData }
+        ]).then(result => {
+            if (!result || result.length === 0 || !result[0].upsert_sense) {
+                throw new Error('Failed to upsert sense.');
+            }
+          });
+    }
+
+
     // Maps get_crosswords_list result to ClueCollection[]
     public async getCrosswordList(date: Date): Promise<ClueCollection[]> {
         const result = await sqlQuery(true, 'get_crosswords_list', [
