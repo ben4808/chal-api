@@ -5,8 +5,8 @@ import { User } from "./User";
 
 export interface ClueCollection {
     id?: string;
-    title: string;
     puzzle?: Puzzle;
+    title: string;
     author?: string;
     creator?: User;
     description?: string;

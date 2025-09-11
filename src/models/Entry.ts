@@ -6,9 +6,10 @@ export interface Entry {
     rootEntry?: string; // for inflected forms
     displayText?: string;
     entryType?: string;
-    obscurityScore?: number;
+    familiarityScore?: number;
     qualityScore?: number;
     cruziScore?: number;
 
     senses?: Sense[];
+    tags?: string[];
 }
