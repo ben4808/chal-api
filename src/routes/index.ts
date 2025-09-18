@@ -4,8 +4,8 @@ import { getCrossword } from '../handlers/getCrossword';
 import { getCollectionList } from '../handlers/getCollectionList';
 import { getCollectionBatch } from '../handlers/getCollectionBatch';
 import { submitUserResponse } from '../handlers/submitUserResponse';
-import { addClueToCollection } from '../handlers/addClueToCollection';
 import { removeClueFromCollection } from '../handlers/removeClueFromCollection';
+import { addCluesToCollection } from '../handlers/addCluesToCollection';
 
 const apiRouter = Router();
 
@@ -19,7 +19,7 @@ apiRouter.post('/submitUserResponse', submitUserResponse);
 //apiRouter.get('/generateEntryInfo', generateEntryInfo);
 //apiRouter.get('/queryEntries', queryEntries);
 //apiRouter.post('/createClue', createClue);
-apiRouter.post('/addClueToCollection', addClueToCollection);
+apiRouter.post('/addCluesToCollection', addCluesToCollection);
 apiRouter.post('/removeClueFromCollection', removeClueFromCollection);
 
 export default apiRouter;

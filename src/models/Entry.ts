@@ -10,6 +10,6 @@ export interface Entry {
     qualityScore?: number;
     cruziScore?: number;
 
-    senses?: Sense[];
+    senses?: Map<string, Sense>; // <senseId, Sense>
     tags?: string[];
 }

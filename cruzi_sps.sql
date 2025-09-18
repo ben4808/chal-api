@@ -1,3 +1,168 @@
+/*
+Write a Postgre function "upsert_sense" to provide upsert functionality for the above tables.
+The function should take a single parameter of type jsonb and use jsonb throughout.
+Every field in the table should only be updated if it is present in the jsonb parameter.
+Output the function in a SQL file.
+*/
+
+CREATE OR REPLACE FUNCTION upsert_entry(data jsonb)
+RETURNS void AS $$
+BEGIN
+  INSERT INTO entry ("entry", root_entry, lang, "length", display_text, entry_type, familiarity_score, quality_score)
+  VALUES (
+    data->>'entry',
+    data->>'root_entry',
+    data->>'lang',
+    (data->>'length')::int,
+    data->>'display_text',
+    data->>'entry_type',
+    (data->>'familiarity_score')::int,
+    (data->>'quality_score')::int
+  )
+  ON CONFLICT ("entry", lang) DO UPDATE SET
+    root_entry = COALESCE(data->>'root_entry', entry.root_entry),
+    "length" = COALESCE((data->>'length')::int, entry."length"),
+    display_text = COALESCE(data->>'display_text', entry.display_text),
+    entry_type = COALESCE(data->>'entry_type', entry.entry_type),
+    familiarity_score = COALESCE((data->>'familiarity_score')::int, entry.familiarity_score),
+    quality_score = COALESCE((data->>'quality_score')::int, entry.quality_score);
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION upsert_sense(sense_data jsonb)
+RETURNS void AS $$
+DECLARE
+    v_sense_id text;
+    v_lang text;
+    v_entry text;
+    v_part_of_speech text;
+    v_commonness text;
+    v_familiarity_score int;
+    v_quality_score int;
+    v_source_ai text;
+    v_summary text;
+    v_definition text;
+    v_example_sentence jsonb;
+    v_example_sentence_id text;
+    v_sentence text;
+    v_translated_sentence text;
+    v_display_text text;
+    key text;
+    value jsonb;
+BEGIN
+    -- Extract common fields from JSONB
+    v_sense_id := sense_data->>'id';
+    v_entry := sense_data->>'entry';
+    v_lang := sense_data->>'lang';
+    v_part_of_speech := sense_data->>'part_of_speech';
+    v_commonness := sense_data->>'commonness';
+    v_familiarity_score := (sense_data->>'familiarity_score')::int;
+    v_quality_score := (sense_data->>'quality_score')::int;
+    v_source_ai := sense_data->>'source_ai';
+
+    -- Upsert into 'sense' table
+    INSERT INTO sense (
+        id, 
+        "entry", 
+        lang, 
+        part_of_speech, 
+        commonness, 
+        familiarity_score, 
+        quality_score, 
+        source_ai
+    ) VALUES (
+        v_sense_id, 
+        v_entry, 
+        v_lang, 
+        v_part_of_speech, 
+        v_commonness, 
+        v_familiarity_score, 
+        v_quality_score, 
+        v_source_ai
+    )
+    ON CONFLICT (id) DO UPDATE SET
+        "entry" = COALESCE(EXCLUDED."entry", sense."entry"),
+        lang = COALESCE(EXCLUDED.lang, sense.lang),
+        part_of_speech = COALESCE(EXCLUDED.part_of_speech, sense.part_of_speech),
+        commonness = COALESCE(EXCLUDED.commonness, sense.commonness),
+        familiarity_score = COALESCE(EXCLUDED.familiarity_score, sense.familiarity_score),
+        quality_score = COALESCE(EXCLUDED.quality_score, sense.quality_score),
+        source_ai = COALESCE(EXCLUDED.source_ai, sense.source_ai);
+
+    -- Upsert into 'sense_translation' table
+    IF sense_data ? 'summary' THEN
+        FOR key, value IN SELECT * FROM jsonb_each(sense_data->'summary') LOOP
+            v_lang := key;
+            v_summary := value::text;
+            
+            INSERT INTO sense_translation (sense_id, lang, summary)
+            VALUES (v_sense_id, v_lang, v_summary)
+            ON CONFLICT (sense_id, lang) DO UPDATE SET
+                summary = EXCLUDED.summary;
+        END LOOP;
+    END IF;
+
+    IF sense_data ? 'definition' THEN
+        FOR key, value IN SELECT * FROM jsonb_each(sense_data->'definition') LOOP
+            v_lang := key;
+            v_definition := value::text;
+            
+            INSERT INTO sense_translation (sense_id, lang, "definition")
+            VALUES (v_sense_id, v_lang, v_definition)
+            ON CONFLICT (sense_id, lang) DO UPDATE SET
+                "definition" = EXCLUDED."definition";
+        END LOOP;
+    END IF;
+
+    -- Upsert into 'sense_entry_translation' table
+    IF sense_data ? 'entry_translations' THEN
+        FOR key, value IN SELECT * FROM jsonb_each(sense_data->'entry_translations') LOOP
+            v_lang := key;
+            v_display_text := value::text;
+            
+            INSERT INTO sense_entry_translation (sense_id, "entry", lang, display_text)
+            VALUES (v_sense_id, v_entry, v_lang, v_display_text)
+            ON CONFLICT (sense_id, "entry", lang) DO UPDATE SET
+                display_text = EXCLUDED.display_text;
+        END LOOP;
+    END IF;
+    
+    -- Upsert into 'example_sentence' table
+    IF sense_data ? 'exampleSentences' THEN
+        FOR v_example_sentence IN SELECT * FROM jsonb_array_elements(sense_data->'example_sentences') LOOP
+            v_example_sentence_id := v_example_sentence->>'id';
+            v_lang := v_example_sentence->>'lang';
+            v_sentence := v_example_sentence->>'sentence';
+            v_translated_sentence := v_example_sentence->>'translated_sentence';
+            v_source_ai := v_example_sentence->>'source_ai';
+            
+            INSERT INTO example_sentence (
+                id, 
+                sense_id, 
+                lang, 
+                sentence, 
+                translated_sentence, 
+                source_ai
+            ) VALUES (
+                v_example_sentence_id, 
+                v_sense_id, 
+                v_lang, 
+                v_sentence, 
+                v_translated_sentence, 
+                v_source_ai
+            )
+            ON CONFLICT (id) DO UPDATE SET
+                sense_id = EXCLUDED.sense_id,
+                lang = EXCLUDED.lang,
+                sentence = EXCLUDED.sentence,
+                translated_sentence = EXCLUDED.translated_sentence,
+                source_ai = EXCLUDED.source_ai;
+        END LOOP;
+    END IF;
+
+END;
+$$ LANGUAGE plpgsql;
+
 CREATE OR REPLACE FUNCTION get_crosswords_list(
   p_date DATE
 )

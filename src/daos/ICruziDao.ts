@@ -12,9 +12,9 @@ export interface ICruziDao {
   getCollection(collectionId: string): Promise<ClueCollection | null>;
   getClues(collectionId: string): Promise<Clue[]>;
 
-  addClueToCollection(collectionId: string, clue: Clue): Promise<Clue>;
-  addOrUpdateEntry(entry: Entry): Promise<Entry>;
-  addOrUpdateSense(sense: Sense): Promise<Sense>;
+  addClueToCollection(collectionId: string, clue: Clue): Promise<void>;
+  addOrUpdateEntry(entry: Entry): Promise<void>;
+  addOrUpdateSense(sense: Sense): Promise<void>;
 
   getSingleClue(clueId: string): Promise<Clue | null>;
   updateSingleClue(clue: Clue): Promise<Clue>;

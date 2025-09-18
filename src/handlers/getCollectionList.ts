@@ -17,7 +17,7 @@ The handler should handle errors gracefully and return appropriate HTTP status c
 
 export async function getCollectionList(req: Request, res: Response) {
     try {
-        const user = req.user; // Assuming user is set by authentication middleware
+        const user = {id: "bzoon"}; //req.user; // Assuming user is set by authentication middleware
         if (!user) {
             return res.status(StatusCodes.UNAUTHORIZED).json({ message: "Unauthorized access." });
         }

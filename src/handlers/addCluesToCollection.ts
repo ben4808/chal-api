@@ -4,6 +4,7 @@ import CruziDao from "../daos/CruziDao";
 import { Entry } from "../models/Entry";
 import { Sense } from "../models/Sense";
 import { Clue } from "../models/Clue";
+import { generateId } from "../lib/utils";
 
 let dao = new CruziDao();
 
@@ -22,7 +23,7 @@ The handler should handle errors gracefully and return appropriate HTTP status c
 
 export async function addCluesToCollection(req: Request, res: Response) {
     try {
-        const collectionId = req.params.id;
+        const collectionId = req.query.id as string;
         const clues = req.body;
         if (!collectionId || !clues || !Array.isArray(clues) || clues.length === 0) {
             return res.status(StatusCodes.BAD_REQUEST).json({ message: "Collection ID and clue data are required." });
@@ -44,6 +45,7 @@ export async function addCluesToCollection(req: Request, res: Response) {
             if (clue.senses && Array.isArray(clue.senses)) {
               for (const inputSense of clue.senses) {
                 let sense = {
+                  id: generateId(),
                   partOfSpeech: inputSense.partOfSpeech,
                   commonness: inputSense.commonness,
                   summary: inputSense.summary,
@@ -58,7 +60,13 @@ export async function addCluesToCollection(req: Request, res: Response) {
 
             let newClue = {} as Clue; // Doesn't need any data by default
             if (clue.clue) {
-              newClue.clue = clue.clue.clue;
+              newClue.id = generateId();
+              newClue.entry = {
+                entry: clue.entry.entry,
+                lang: clue.entry.lang,
+              };
+              newClue.customClue = clue.clue;
+              newClue.senseId = clue.clue.senseId;
               newClue.customDisplayText = clue.clue.customDisplayText;
               newClue.source = clue.clue.source;
               newClue.translatedClues = clue.clue.translatedClues;

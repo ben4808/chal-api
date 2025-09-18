@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
-import PostgresDao from "../daos/PostgresDao";
 import { StatusCodes } from 'http-status-codes';
+import CruziDao from "../daos/CruziDao";
 
-let dao = new PostgresDao();
+let dao = new CruziDao();
 
 /*
 Write an Express handler getCrosswordList that retrieves a list of crossword puzzles.

@@ -6,89 +6,49 @@ import { Sense } from "../models/Sense";
 import { ICruziDao } from "./ICruziDao";
 import { sqlQuery } from "./postgres";
 
-// Helper function to map 'user' fields from the raw creator object
-const mapCreator = (creator: any) => {
-    if (!creator) return undefined;
-    return {
-        id: creator.creator_id,
-        firstName: creator.creator_first_name,
-        lastName: creator.creator_last_name,
-        email: creator.email || undefined,
-    };
-};
-
-// Helper function to map 'progressData' for ClueCollection from the raw user_progress object
-const mapCollectionProgressData = (progress: any) => {
-    if (!progress) return undefined;
-    return {
-        unseen: progress.unseen,
-        inProgress: progress.in_progress,
-        completed: progress.completed,
-    };
-};
-
-// Helper function to map 'progressData' for Clue from the raw user_progress object
-const mapClueProgressData = (progress: any) => {
-    if (!progress) return undefined;
-    return {
-        totalSolves: progress.total_solves,
-        correctSolves: progress.correct_solves,
-        incorrectSolves: progress.incorrect_solves,
-        lastSolve: progress.last_solve ? new Date(progress.last_solve) : undefined,
-    };
-};
-
 class CruziDao implements ICruziDao {
-    public async addClueToCollection(collectionId: string, clue: Clue): Promise<Clue> {
+    public async addClueToCollection(collectionId: string, clue: Clue): Promise<void> {
         const clueData = {
-            collectionId: collectionId,
-            clue: clue.clue,
-            customDisplayText: clue.customDisplayText,
+            collection_id: collectionId,
+            entry: clue.entry?.entry,
+            lang: clue.entry?.lang,
+            custom_clue: clue.customClue,
+            custom_display_text: clue.customDisplayText,
             source: clue.source,
         };
 
-        return await sqlQuery(true, 'add_clue_to_collection', [
+        await sqlQuery(true, 'add_clue_to_collection', [
             { name: 'clue_data', value: clueData }
-        ]).then(result => {
-            if (!result || result.length === 0 || !result[0].add_clue_to_collection) {
-                throw new Error('Failed to add clue to collection.');
-            }
-        });
+        ]);
     }
 
-    public async addOrUpdateEntry(entry: Entry): Promise<Entry> {
+    public async addOrUpdateEntry(entry: Entry): Promise<void> {
         const entryData = {
             entry: entry.entry,
             lang: entry.lang,
-            rootEntry: entry.rootEntry,
-            displayText: entry.displayText,
-            entryType: entry.entryType,
+            length: entry.entry.length,
+            root_entry: entry.rootEntry,
+            display_text: entry.displayText,
+            entry_type: entry.entryType,
         };  
-        return await sqlQuery(true, 'upsert_entry', [
+
+        await sqlQuery(true, 'upsert_entry', [
             { name: 'entry_data', value: entryData }
-        ]).then(result => {
-            if (!result || result.length === 0 || !result[0].upsert_entry) {
-                throw new Error('Failed to upsert entry.');
-            }
-          });
+        ]);
     }
 
-    public async addOrUpdateSense(sense: Sense): Promise<Sense> {
+    public async addOrUpdateSense(sense: Sense): Promise<void> {
         const senseData = {
-            partOfSpeech: sense.partOfSpeech,
+            part_of_speech: sense.partOfSpeech,
             commonness: sense.commonness,
-            summary: sense.summary,
-            definition: sense.definition,
-            exampleSentences: sense.exampleSentences
+            summary: sense.summary, // Map<lang, text>
+            definition: sense.definition, // Map<lang, text>
+            example_sentences: sense.exampleSentences // [Map<lang, text>]
         };
 
-        return await sqlQuery(true, 'upsert_sense', [
+        await sqlQuery(true, 'upsert_sense', [
             { name: 'sense_data', value: senseData }
-        ]).then(result => {
-            if (!result || result.length === 0 || !result[0].upsert_sense) {
-                throw new Error('Failed to upsert sense.');
-            }
-          });
+        ]);
     }
 
 
@@ -116,10 +76,7 @@ class CruziDao implements ICruziDao {
                 id: raw.puzzle_id,
                 width: raw.width,
                 height: raw.height,
-                publication: {
-                    id: raw.publication_id,
-                    name: raw.publication_name,
-                },
+                publication: raw.publication,
             }
         } as ClueCollection));
     }
@@ -248,9 +205,9 @@ class CruziDao implements ICruziDao {
     public async updateSingleClue(clue: Clue): Promise<Clue> {
         const clueData = {
             id: clue.id,
-            entry: clue.entry.entry,
-            lang: clue.lang || clue.entry.lang,
-            clue: clue.clue,
+            entry: clue.entry?.entry,
+            lang: clue.entry?.lang,
+            clue: clue.customClue,
             source: clue.source,
         };
 
@@ -349,5 +306,37 @@ class CruziDao implements ICruziDao {
         } as Entry));
     }
 }
+
+// Helper function to map 'user' fields from the raw creator object
+const mapCreator = (creator: any) => {
+    if (!creator) return undefined;
+    return {
+        id: creator.creator_id,
+        firstName: creator.creator_first_name,
+        lastName: creator.creator_last_name,
+        email: creator.email || undefined,
+    };
+};
+
+// Helper function to map 'progressData' for ClueCollection from the raw user_progress object
+const mapCollectionProgressData = (progress: any) => {
+    if (!progress) return undefined;
+    return {
+        unseen: progress.unseen,
+        inProgress: progress.in_progress,
+        completed: progress.completed,
+    };
+};
+
+// Helper function to map 'progressData' for Clue from the raw user_progress object
+const mapClueProgressData = (progress: any) => {
+    if (!progress) return undefined;
+    return {
+        totalSolves: progress.total_solves,
+        correctSolves: progress.correct_solves,
+        incorrectSolves: progress.incorrect_solves,
+        lastSolve: progress.last_solve ? new Date(progress.last_solve) : undefined,
+    };
+};
 
 export default CruziDao;
