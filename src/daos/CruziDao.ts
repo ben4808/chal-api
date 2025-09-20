@@ -47,14 +47,17 @@ class CruziDao implements ICruziDao {
 
     public async addOrUpdateSense(entry: Entry, sense: Sense): Promise<void> {
         const senseData = deepConvertToObject({
+            id: sense.id,
             part_of_speech: sense.partOfSpeech,
             commonness: sense.commonness,
             summary: sense.summary, // Map<lang, text>
             definition: sense.definition, // Map<lang, text>
-            example_sentences: sense.exampleSentences, // [Map<lang, text>]
+            example_sentences: sense.exampleSentences, // ExampleSentence[]
             translations: sense.translations, // Map<lang, EntryTranslation>
             source_ai: sense.sourceAi,
         });
+
+        console.log(JSON.stringify(senseData, null, 2));
 
         await sqlQuery(true, 'upsert_sense', [
             { name: 'p_entry', value: entry.entry },

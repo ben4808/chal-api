@@ -1,4 +1,5 @@
 import { EntryTranslation } from "./EntryTranslation";
+import { ExampleSentence } from "./ExampleSentence";
 
 export interface Sense {
   id?: string;
@@ -6,7 +7,7 @@ export interface Sense {
   commonness?: string;
   summary: Map<string, string>; // <lang, summary>
   definition?: Map<string, string>; // <lang, definition>
-  exampleSentences?: [Map<string, string>]; // array of <lang, example sentence>
+  exampleSentences?: ExampleSentence[];
   translations?: Map<string, EntryTranslation>; // <lang, EntryTranslation>
   familiarityScore?: number;
   qualityScore?: number;

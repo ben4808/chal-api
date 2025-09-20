@@ -6,6 +6,7 @@ import { Sense } from "../models/Sense";
 import { Clue } from "../models/Clue";
 import { convertObjectToMap, displayTextToEntry, generateId, mapKeys } from "../lib/utils";
 import { EntryTranslation } from "../models/EntryTranslation";
+import { ExampleSentence } from "../models/ExampleSentence";
 
 let dao = new CruziDao();
 
@@ -43,15 +44,14 @@ export async function addCluesToCollection(req: Request, res: Response) {
 
             if (clue.senses && Array.isArray(clue.senses)) {
               for (const inputSense of clue.senses) {
+                let senseId = generateId();
                 let sense = {
-                  id: generateId(),
+                  id: senseId,
                   partOfSpeech: inputSense.partOfSpeech,
                   commonness: inputSense.commonness,
                   summary: convertObjectToMap(inputSense.summary),
                   definition: convertObjectToMap(inputSense.definition),
-                  exampleSentences: inputSense.exampleSentences.map((ex: any) => {
-                    return convertObjectToMap(ex);
-                  }),
+                  exampleSentences: convertExampleSentencesToModel(inputSense.exampleSentences, senseId),
                   translations: convertTranslationsToModel(inputSense.translations),
                   sourceAi: inputSense.sourceAi,
                 } as Sense;
@@ -125,6 +125,24 @@ function convertTranslationsToModel(translationsObj: any): Map<string, EntryTran
           displayText: t
         }) as Entry),
       } as EntryTranslation);
+    }
+
+    return output;
+}
+
+function convertExampleSentencesToModel(exampleSentencesObj: any, senseId: string): ExampleSentence[] {
+    if (!exampleSentencesObj || !Array.isArray(exampleSentencesObj)) {
+      return [];
+    }
+    let output: ExampleSentence[] = [];
+
+    for (const exampleSentenceData of exampleSentencesObj) {
+      let exampleSentence: ExampleSentence = {
+        id: generateId(),
+        senseId: senseId,
+        translations: convertObjectToMap(exampleSentenceData),
+      };
+      output.push(exampleSentence);
     }
 
     return output;

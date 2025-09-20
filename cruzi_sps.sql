@@ -30,9 +30,9 @@ END;
 $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION upsert_sense(
-  p_entry text,
-  p_lang text,
-  sense_data jsonb
+    p_entry text,
+    p_lang text,
+    sense_data jsonb
 )
 RETURNS void AS $$
 DECLARE
@@ -60,80 +60,68 @@ BEGIN
         commonness = EXCLUDED.commonness,
         source_ai = EXCLUDED.source_ai;
 
-    -- Handle sense_translation
-    WITH translations AS (
-        SELECT
-            v_sense_id AS sense_id,
-            key AS lang,
-            value->>'summary' AS summary,
-            value->>'definition' AS definition
-        FROM jsonb_each(sense_data) AS t(key, value)
-        WHERE key IN ('summary', 'definition')
-    )
     INSERT INTO sense_translation (sense_id, lang, summary, definition)
     SELECT
-        t.sense_id,
-        t.lang,
-        COALESCE(s.summary->>t.lang, t.summary),
-        COALESCE(d.definition->>t.lang, t.definition)
-    FROM translations AS t
-    LEFT JOIN jsonb_each(sense_data->'summary') AS s(lang, summary) ON t.lang = s.lang
-    LEFT JOIN jsonb_each(sense_data->'definition') AS d(lang, definition) ON t.lang = d.lang
+        v_sense_id AS sense_id,
+        summary_lang AS lang,
+        summary_text AS summary,
+        definition_data.definition_text AS definition
+    FROM jsonb_each_text(sense_data->'summary') AS summary_data(summary_lang, summary_text)
+    LEFT JOIN LATERAL jsonb_each_text(sense_data->'definition') AS definition_data(definition_lang, definition_text) ON summary_data.summary_lang = definition_data.definition_lang
     ON CONFLICT (sense_id, lang) DO UPDATE SET
-        summary = COALESCE(EXCLUDED.summary, sense_translation.summary),
-        definition = COALESCE(EXCLUDED.definition, sense_translation.definition);
+        summary = EXCLUDED.summary,
+        definition = EXCLUDED.definition;
 
-    -- Handle sense_entry_translation (with bulk upsert)
     INSERT INTO sense_entry_translation (sense_id, "entry", lang, display_text)
     SELECT
         v_sense_id AS sense_id,
-        unnested_translation->>'entry' AS "entry",
-        unnested_translation->>'lang' AS lang,
-        unnested_translation->>'displayText' AS display_text
+        translation_obj->>'entry' AS "entry",
+        translation_obj->>'lang' AS lang,
+        translation_obj->>'displayText' AS display_text
     FROM (
         SELECT
             key AS lang,
-            unnest(
-                ARRAY(
-                    SELECT jsonb_array_elements_text(
-                        (value->'naturalTranslations')
-                    )
-                ) || ARRAY(
-                    SELECT jsonb_array_elements_text(
-                        (value->'colloquialTranslations')
-                    )
-                )  || ARRAY(
-                    SELECT jsonb_array_elements_text(
-                        (value->'alternatives')
-                    )
-                )
-            ) AS unnested_translation
+            jsonb_array_elements(value->'naturalTranslations') AS translation_obj
         FROM jsonb_each(sense_data->'translations')
+        WHERE jsonb_typeof(value->'naturalTranslations') = 'array'
+        
+        UNION ALL
+        
+        SELECT
+            key AS lang,
+            jsonb_array_elements(value->'colloquialTranslations') AS translation_obj
+        FROM jsonb_each(sense_data->'translations')
+        WHERE jsonb_typeof(value->'colloquialTranslations') = 'array'
+        
+        UNION ALL
+        
+        SELECT
+            key AS lang,
+            jsonb_array_elements(value->'alternatives') AS translation_obj
+        FROM jsonb_each(sense_data->'translations')
+        WHERE jsonb_typeof(value->'alternatives') = 'array'
     ) AS translations_data
     ON CONFLICT (sense_id, "entry", lang) DO UPDATE SET
         display_text = EXCLUDED.display_text;
 
-    -- Handle example_sentence (with bulk upsert)
-    INSERT INTO example_sentence (
-        id,
-        sense_id,
+    INSERT INTO example_sentence (id, sense_id)
+    SELECT
+        ex_sentence->>'id' AS id,
+        ex_sentence->>'senseId' AS sense_id
+    FROM
+        jsonb_array_elements(sense_data->'example_sentences') AS ex_sentence
+    ON CONFLICT (id) DO UPDATE SET
+        sense_id = EXCLUDED.sense_id;
+
+    INSERT INTO example_sentence_translation (example_id, lang, sentence)
+    SELECT
+        ex_sentence->>'id' AS example_id,
         lang,
         sentence
-    )
-    SELECT
-        v_example_sentence->>'id' AS id,
-        v_sense_id AS sense_id,
-        example_key AS lang,
-        example_value AS sentence
-    FROM (
-        SELECT
-            v_example_sentence_data,
-            jsonb_each_text(v_example_sentence_data) AS example_pair
-        FROM jsonb_array_elements(sense_data->'examplesSentences') AS v_example_sentence_data
-    ) AS t(v_example_sentence_data, example_key, example_value)
-    ON CONFLICT (id) DO UPDATE SET
-        sense_id = EXCLUDED.sense_id,
-        lang = EXCLUDED.lang,
+    FROM
+        jsonb_array_elements(sense_data->'example_sentences') AS ex_sentence,
+        jsonb_each_text(ex_sentence->'translations') AS translation_pair(lang, sentence)
+    ON CONFLICT (example_id, lang) DO UPDATE SET
         sentence = EXCLUDED.sentence;
 END;
 $$ LANGUAGE plpgsql;
