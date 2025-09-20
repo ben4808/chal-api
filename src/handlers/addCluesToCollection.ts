@@ -4,7 +4,8 @@ import CruziDao from "../daos/CruziDao";
 import { Entry } from "../models/Entry";
 import { Sense } from "../models/Sense";
 import { Clue } from "../models/Clue";
-import { generateId } from "../lib/utils";
+import { convertObjectToMap, displayTextToEntry, generateId, mapKeys } from "../lib/utils";
+import { EntryTranslation } from "../models/EntryTranslation";
 
 let dao = new CruziDao();
 
@@ -30,17 +31,15 @@ export async function addCluesToCollection(req: Request, res: Response) {
         }
 
         for (const clue of clues) {
-            if (clue.entry) {
-              let entry = {
-                entry: clue.entry.entry,
-                lang: clue.entry.lang,
-                rootEntry: clue.entry.rootEntry,
-                displayText: clue.entry.displayText,
-                entryType: clue.entry.entryType,
-              } as Entry;
+            let entry = {
+              entry: clue.entry.entry,
+              lang: clue.entry.lang,
+              rootEntry: clue.entry.rootEntry,
+              displayText: clue.entry.displayText,
+              entryType: clue.entry.entryType,
+            } as Entry;
 
-              await dao.addOrUpdateEntry(entry);
-            }
+            await dao.addOrUpdateEntries([entry]);
 
             if (clue.senses && Array.isArray(clue.senses)) {
               for (const inputSense of clue.senses) {
@@ -48,13 +47,33 @@ export async function addCluesToCollection(req: Request, res: Response) {
                   id: generateId(),
                   partOfSpeech: inputSense.partOfSpeech,
                   commonness: inputSense.commonness,
-                  summary: inputSense.summary,
-                  definition: inputSense.definition,
-                  exampleSentences: inputSense.exampleSentences,
-                  translations: inputSense.translations,
+                  summary: convertObjectToMap(inputSense.summary),
+                  definition: convertObjectToMap(inputSense.definition),
+                  exampleSentences: inputSense.exampleSentences.map((ex: any) => {
+                    return convertObjectToMap(ex);
+                  }),
+                  translations: convertTranslationsToModel(inputSense.translations),
+                  sourceAi: inputSense.sourceAi,
                 } as Sense;
 
-                await dao.addOrUpdateSense(sense);
+                await dao.addOrUpdateSense(entry, sense);
+
+                // add entries for all translations of the entry
+                let entriesToAdd: Entry[] = [];
+                if (sense.translations) {
+                  for (const langGroup of mapKeys(sense.translations)) {
+                    let translations = [
+                      sense.translations.get(langGroup)?.naturalTranslations,
+                      sense.translations.get(langGroup)?.colloquialTranslations,
+                      sense.translations.get(langGroup)?.alternatives,
+                    ].flat().filter(t => t !== undefined);
+
+                    for (const translation of translations) {
+                      entriesToAdd.push(translation);
+                    }
+                  }
+                  await dao.addOrUpdateEntries(entriesToAdd);
+                }
               }
             }
 
@@ -78,4 +97,35 @@ export async function addCluesToCollection(req: Request, res: Response) {
         console.error("Error adding/updating clue:", error);
         return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ message: "An error occurred while adding/updating the clue." });
     }
+}
+
+function convertTranslationsToModel(translationsObj: any): Map<string, EntryTranslation> {
+    let translationsMap = convertObjectToMap(translationsObj);
+    let output = new Map<string, EntryTranslation>();
+
+    for (const lang of mapKeys(translationsMap)) {
+      let naturalTranslations = translationsMap.get(lang)?.naturalTranslations || [];
+      let colloquialTranslations = translationsMap.get(lang)?.colloquialTranslations || [];
+      let alternatives = translationsMap.get(lang)?.alternatives || [];
+
+      output.set(lang, {
+        naturalTranslations: naturalTranslations.map((t: any) => ({
+          entry: displayTextToEntry(t),
+          lang: lang,
+          displayText: t
+        }) as Entry),
+        colloquialTranslations: colloquialTranslations.map((t: any) => ({
+          entry: displayTextToEntry(t),
+          lang: lang,
+          displayText: t
+        }) as Entry),
+        alternatives: alternatives.map((t: any) => ({
+          entry: displayTextToEntry(t),
+          lang: lang,
+          displayText: t
+        }) as Entry),
+      } as EntryTranslation);
+    }
+
+    return output;
 }

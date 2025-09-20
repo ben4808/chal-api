@@ -10,4 +10,5 @@ export interface Sense {
   translations?: Map<string, EntryTranslation>; // <lang, EntryTranslation>
   familiarityScore?: number;
   qualityScore?: number;
+  sourceAi?: string; // Source of the sense (e.g., "ChatGPT", "WordNet")
 }

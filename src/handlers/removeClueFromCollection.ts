@@ -5,26 +5,26 @@ import CruziDao from "../daos/CruziDao";
 let dao = new CruziDao();
 
 /*
-Write an Express handler getCrossword that retrieves info about a specific crossword puzzle.
+Write an Express handler removeClueFromCollection that removed a clue from a specified collection.
 It should accept a request with the following parameters:
-- `id`: The ID of the clue collection of the crossword puzzle to retrieve.
-It should return a JSON response with the list of clues in the crossword clue collection.
-- The response should adhere to the structure defined in the Clue interface.
+- `collectionId`: The ID of the clue collection to remove the clue from.
+- `clueId`: The ID of the clue to remove.
 The handler should handle errors gracefully and return appropriate HTTP status codes.
 */
 
 export async function removeClueFromCollection(req: Request, res: Response) {
     try {
-        const date = req.query.date ? new Date(req.query.date as string) : new Date();
-        const crosswords = await dao.getCrosswordList(date);
+        const collectionId = req.body.collectionId as string;
+        const clueId = req.body.clueId as string;
 
-        if (!crosswords || crosswords.length === 0) {
-            return res.status(StatusCodes.NOT_FOUND).json({ message: "No crosswords found for the specified date." });
+        if (!collectionId || !clueId) {
+            return res.status(StatusCodes.BAD_REQUEST).json({ message: "Collection ID and Clue ID are required." });
         }
 
-        return res.status(StatusCodes.OK).json(crosswords);
+        await dao.removeClueFromCollection(collectionId, clueId);
+        return res.status(StatusCodes.OK).json({ message: "Clue removed from collection successfully." });
     } catch (error) {
-        console.error("Error retrieving crossword list:", error);
-        return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ message: "An error occurred while retrieving the crossword list." });
+        console.error("Error removing clue from collection:", error);
+        return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ message: "An error occurred while removing the clue from the collection." });
     }
 }

@@ -13,8 +13,9 @@ export interface ICruziDao {
   getClues(collectionId: string): Promise<Clue[]>;
 
   addClueToCollection(collectionId: string, clue: Clue): Promise<void>;
-  addOrUpdateEntry(entry: Entry): Promise<void>;
-  addOrUpdateSense(sense: Sense): Promise<void>;
+  removeClueFromCollection(collectionId: string, clueId: string): Promise<void>;
+  addOrUpdateEntries(entries: Entry[]): Promise<void>;
+  addOrUpdateSense(entry: Entry, sense: Sense): Promise<void>;
 
   getSingleClue(clueId: string): Promise<Clue | null>;
   updateSingleClue(clue: Clue): Promise<Clue>;

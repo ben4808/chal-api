@@ -47,3 +47,49 @@ export function generateId(): string {
     }
     return id;
 }
+
+export function displayTextToEntry(text: string): string {
+  // Convert display text to entry format
+  return text.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+}
+
+export function convertObjectToMap<T extends Record<string, any>>(obj: T): Map<string, any> {
+  const map = new Map<string, any>();
+  for (const key in obj) {
+    // Ensure the key is an own property of the object
+    if (Object.prototype.hasOwnProperty.call(obj, key)) {
+      map.set(key, obj[key]);
+    }
+  }
+  return map;
+}
+
+export function deepConvertToObject(data: any): any {
+  // If the data is a Map, convert it to an object
+  if (data instanceof Map) {
+    const obj: Record<string, any> = {};
+    for (const [key, value] of data.entries()) {
+      obj[key] = deepConvertToObject(value);
+    }
+    return obj;
+  }
+  
+  // If the data is an array, convert its contents
+  if (Array.isArray(data)) {
+    return data.map(item => deepConvertToObject(item));
+  }
+  
+  // If the data is a plain object, iterate over its properties
+  if (typeof data === 'object' && data !== null) {
+    const obj: Record<string, any> = {};
+    for (const key in data) {
+      if (Object.prototype.hasOwnProperty.call(data, key)) {
+        obj[key] = deepConvertToObject(data[key]);
+      }
+    }
+    return obj;
+  }
+
+  // Otherwise, return the primitive value as is
+  return data;
+}

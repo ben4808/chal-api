@@ -8,6 +8,7 @@
     },
     "senses": [
       {
+        "sourceAi": "gemini2.5",
         "partOfSpeech": "noun",
         "commonness": "primary",
         "summary": {
@@ -18,7 +19,7 @@
           "es": "Pasta hecha con cacao y azúcar molidos, a la que generalmente se añade canela o vainilla.",
           "en": "Paste made from ground cocoa and sugar, to which cinnamon or vanilla is usually added."
         },
-        "examplesSentences": [
+        "exampleSentences": [
           {
             "es": "Se preparó chocolate con café para el desayuno.",
             "en": "Chocolate with coffee was prepared for breakfast.",
@@ -36,15 +37,16 @@
           }
         ],
         "translations": {
+          "gn": {
+            "alternatives": ["chokora", "kakau"]
+          },
           "es": {
             "naturalTranslations": ["chocolate", "cacao"],
-            "colloquialTranslations": ["dulce", "bombón"],
-            "source_ai": "VSCode"
+            "colloquialTranslations": ["dulce", "bombón"]
           },
           "en": {
             "naturalTranslations": ["chocolate", "cocoa"],
-            "colloquialTranslations": ["sweet", "candy"],
-            "source_ai": "VSCode"
+            "colloquialTranslations": ["sweet", "candy"]
           }
         }
       }
@@ -59,6 +61,7 @@
     },
     "senses": [
       {
+        "sourceAi": "gemini2.5",
         "partOfSpeech": "verb",
         "commonness": "primary",
         "summary": {
@@ -69,7 +72,7 @@
           "es": "Expresar amor o cariño hacia una persona, lugar o cosa.",
           "en": "To express love or affection towards a person, place, or thing."
         },
-        "examplesSentences": [
+        "exampleSentences": [
           {
             "es": "Amo a mi amigo que va al monte.",
             "en": "I love my friend who goes to the forest.",
@@ -89,13 +92,11 @@
         "translations": {
           "es": {
             "naturalTranslations": ["amar", "querer"],
-            "colloquialTranslations": ["gustar", "apreciar"],
-            "source_ai": "VSCode"
+            "colloquialTranslations": ["gustar", "apreciar"]
           },
           "en": {
             "naturalTranslations": ["love", "care for"],
-            "colloquialTranslations": ["like", "appreciate"],
-            "source_ai": "VSCode"
+            "colloquialTranslations": ["like", "appreciate"]
           }
         }
       }
@@ -110,6 +111,7 @@
     },
     "senses": [
       {
+        "sourceAi": "gemini2.5",
         "partOfSpeech": "verb",
         "commonness": "primary",
         "summary": {
@@ -120,7 +122,7 @@
           "es": "Interpretar o pronunciar en voz alta un texto escrito.",
           "en": "To interpret or read aloud written text."
         },
-        "examplesSentences": [
+        "exampleSentences": [
           {
             "es": "Leí un libro anoche.",
             "en": "I read a book last night.",
@@ -140,13 +142,11 @@
         "translations": {
           "es": {
             "naturalTranslations": ["leer", "lectura"],
-            "colloquialTranslations": ["ojear", "repasar"],
-            "source_ai": "VSCode"
+            "colloquialTranslations": ["ojear", "repasar"]
           },
           "en": {
             "naturalTranslations": ["read", "reading"],
-            "colloquialTranslations": ["browse", "scan"],
-            "source_ai": "VSCode"
+            "colloquialTranslations": ["browse", "scan"]
           }
         }
       }
@@ -161,6 +161,7 @@
     },
     "senses": [
       {
+        "sourceAi": "gemini2.5",
         "partOfSpeech": "noun",
         "commonness": "primary",
         "summary": {
@@ -171,7 +172,7 @@
           "es": "Conjunto de hojas impresas o escritas, encuadernadas, que contienen texto o información.",
           "en": "A set of printed or written pages, bound together, containing text or information."
         },
-        "examplesSentences": [
+        "exampleSentences": [
           {
             "es": "Mi libro llegó anoche para leer.",
             "en": "My book arrived last night for reading.",
@@ -191,13 +192,11 @@
         "translations": {
           "es": {
             "naturalTranslations": ["libro", "texto"],
-            "colloquialTranslations": ["tomo", "volumen"],
-            "source_ai": "VSCode"
+            "colloquialTranslations": ["tomo", "volumen"]
           },
           "en": {
             "naturalTranslations": ["book", "volume"],
-            "colloquialTranslations": ["tome", "read"],
-            "source_ai": "VSCode"
+            "colloquialTranslations": ["tome", "read"]
           }
         }
       }
@@ -212,6 +211,7 @@
     },
     "senses": [
       {
+        "sourceAi": "gemini2.5",
         "partOfSpeech": "verb",
         "commonness": "primary",
         "summary": {
@@ -222,7 +222,7 @@
           "es": "Mover el cuerpo al ritmo de la música, generalmente en un evento social o festivo.",
           "en": "To move the body to the rhythm of music, usually at a social or festive event."
         },
-        "examplesSentences": [
+        "exampleSentences": [
           {
             "es": "Nosotros bailamos en una gran fiesta.",
             "en": "We danced at a big party.",
@@ -242,13 +242,11 @@
         "translations": {
           "es": {
             "naturalTranslations": ["bailar", "danza"],
-            "colloquialTranslations": ["moverse", "menearse"],
-            "source_ai": "VSCode"
+            "colloquialTranslations": ["moverse", "menearse"]
           },
           "en": {
             "naturalTranslations": ["dance", "dancing"],
-            "colloquialTranslations": ["boogie", "groove"],
-            "source_ai": "VSCode"
+            "colloquialTranslations": ["boogie", "groove"]
           }
         }
       }
@@ -263,6 +261,7 @@
     },
     "senses": [
       {
+        "sourceAi": "gemini2.5",
         "partOfSpeech": "noun",
         "commonness": "primary",
         "summary": {
@@ -273,7 +272,7 @@
           "es": "Celebración o evento social donde las personas se reúnen para disfrutar, bailar o compartir.",
           "en": "A celebration or social event where people gather to enjoy, dance, or share."
         },
-        "examplesSentences": [
+        "exampleSentences": [
           {
             "es": "La fiesta se realiza esta tarde.",
             "en": "The party is happening this afternoon.",
@@ -293,13 +292,11 @@
         "translations": {
           "es": {
             "naturalTranslations": ["fiesta", "celebración"],
-            "colloquialTranslations": ["juerga", "reunión"],
-            "source_ai": "VSCode"
+            "colloquialTranslations": ["juerga", "reunión"]
           },
           "en": {
             "naturalTranslations": ["party", "celebration"],
-            "colloquialTranslations": ["bash", "gathering"],
-            "source_ai": "VSCode"
+            "colloquialTranslations": ["bash", "gathering"]
           }
         }
       }
@@ -314,6 +311,7 @@
     },
     "senses": [
       {
+        "sourceAi": "gemini2.5",
         "partOfSpeech": "adjective",
         "commonness": "primary",
         "summary": {
@@ -324,7 +322,7 @@
           "es": "Estado de fatiga o agotamiento físico o mental después de una actividad.",
           "en": "A state of physical or mental fatigue after an activity."
         },
-        "examplesSentences": [
+        "exampleSentences": [
           {
             "es": "Estoy cansado después de caminar en el bosque.",
             "en": "I'm tired after walking in the forest.",
@@ -339,13 +337,11 @@
         "translations": {
           "es": {
             "naturalTranslations": ["cansado", "fatigado"],
-            "colloquialTranslations": ["agotado", "rendido"],
-            "source_ai": "VSCode"
+            "colloquialTranslations": ["agotado", "rendido"]
           },
           "en": {
             "naturalTranslations": ["tired", "weary"],
-            "colloquialTranslations": ["exhausted", "worn out"],
-            "source_ai": "VSCode"
+            "colloquialTranslations": ["exhausted", "worn out"]
           }
         }
       }

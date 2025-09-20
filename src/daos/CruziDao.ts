@@ -1,3 +1,4 @@
+import { deepConvertToObject } from "../lib/utils";
 import { Clue } from "../models/Clue";
 import { ClueCollection } from "../models/ClueCollection";
 import { Entry } from "../models/Entry";
@@ -22,32 +23,43 @@ class CruziDao implements ICruziDao {
         ]);
     }
 
-    public async addOrUpdateEntry(entry: Entry): Promise<void> {
-        const entryData = {
+    public async removeClueFromCollection(collectionId: string, clueId: string): Promise<void> {
+        await sqlQuery(true, 'remove_clue_from_collection', [
+            { name: 'p_collection_id', value: collectionId },
+            { name: 'p_clue_id', value: clueId }
+        ]);
+    }
+
+    public async addOrUpdateEntries(entries: Entry[]): Promise<void> {
+        const entryData = entries.map(entry => ({
             entry: entry.entry,
             lang: entry.lang,
             length: entry.entry.length,
             root_entry: entry.rootEntry,
             display_text: entry.displayText,
             entry_type: entry.entryType,
-        };  
+        }));  
 
-        await sqlQuery(true, 'upsert_entry', [
-            { name: 'entry_data', value: entryData }
+        await sqlQuery(true, 'upsert_entries', [
+            { name: 'entries_data', value: entryData }
         ]);
     }
 
-    public async addOrUpdateSense(sense: Sense): Promise<void> {
-        const senseData = {
+    public async addOrUpdateSense(entry: Entry, sense: Sense): Promise<void> {
+        const senseData = deepConvertToObject({
             part_of_speech: sense.partOfSpeech,
             commonness: sense.commonness,
             summary: sense.summary, // Map<lang, text>
             definition: sense.definition, // Map<lang, text>
-            example_sentences: sense.exampleSentences // [Map<lang, text>]
-        };
+            example_sentences: sense.exampleSentences, // [Map<lang, text>]
+            translations: sense.translations, // Map<lang, EntryTranslation>
+            source_ai: sense.sourceAi,
+        });
 
         await sqlQuery(true, 'upsert_sense', [
-            { name: 'sense_data', value: senseData }
+            { name: 'p_entry', value: entry.entry },
+            { name: 'p_lang', value: entry.lang },
+            { name: 'sense_data', value: senseData },
         ]);
     }
 
