@@ -4,6 +4,7 @@ import { ClueCollection } from "../models/ClueCollection";
 import { Entry } from "../models/Entry";
 import { EntryQueryParams } from "../models/EntryQueryParams";
 import { Sense } from "../models/Sense";
+import { UserResponse } from "../models/UserResponse";
 import { ICruziDao } from "./ICruziDao";
 import { sqlQuery } from "./postgres";
 
@@ -138,36 +139,34 @@ class CruziDao implements ICruziDao {
         return result[0].get_crossword_id.collection_id;
     }
 
-    // Maps get_collection result to ClueCollection
-    public async getCollection(collectionId: string): Promise<ClueCollection | null> {
-        const result = await sqlQuery(true, 'get_collection', [
-            { name: 'p_collection_id', value: collectionId }
+    // Maps get_collection_batch result to Clue[]
+    public async getCollectionBatch(userId: string | undefined, collectionId: string): Promise<Clue[]> {
+        const result = await sqlQuery(true, 'get_collection_batch', [
+            { name: 'p_collection_id', value: collectionId },
+            { name: 'p_user_id', value: userId || null }
         ]);
 
-        if (!result || result.length === 0 || !result[0].get_collection) {
-            return null;
+        if (!result || result.length === 0 || !result[0].get_collection_batch) {
+            return [];
         }
 
-        const raw = result[0].get_collection;
-        return {
+        const rawData = result[0].get_collection_batch;
+        return rawData.map((raw: any) => ({
             id: raw.id,
-            title: raw.title,
-            author: raw.author,
-            description: raw.description,
-            isPrivate: raw.is_private ?? false,
-            createdDate: new Date(raw.created_date),
-            modifiedDate: raw.modified_date ? new Date(raw.modified_date) : new Date(raw.created_date),
-            metadata1: raw.metadata1,
-            metadata2: raw.metadata2,
-            creator: mapCreator(raw.creator),
-            puzzle: raw.puzzle_id ? { id: raw.puzzle_id } : undefined,
-            clues: [],
-            clueCount: 0,
-        } as ClueCollection;
+            entry: raw.entry ? {
+                entry: raw.entry,
+                lang: raw.lang,
+            } as Entry : undefined,
+            senseId: raw.sense_id,
+            customClue: raw.custom_clue,
+            customDisplayText: raw.custom_display_text,
+            source: raw.source,
+            progressData: raw.progress_data ? mapClueProgressData(raw.progress_data) : undefined,
+        } as Clue));
     }
 
     // Maps get_clues result to Clue[]
-    public async getClues(collectionId: string, userId?: string): Promise<Clue[]> {
+    public async getCrosswordClues(collectionId: string, userId?: string): Promise<Clue[]> {
         const result = await sqlQuery(true, 'get_clues', [
             { name: 'p_collection_id', value: collectionId },
             { name: 'p_user_id', value: userId || null }
@@ -191,6 +190,22 @@ class CruziDao implements ICruziDao {
             metadata2: raw.metadata2,
             progressData: mapClueProgressData(raw.user_progress),
         } as Clue));
+    }
+
+    // Calls submit_user_response
+    public async submitUserResponse(userId: string, response: UserResponse): Promise<void> {
+        await sqlQuery(true, 'submit_user_response', [
+            { name: 'p_user_id', value: userId },
+            { name: 'p_response', value: response }
+        ]);
+    }
+
+    // Calls reopen_collection
+    public async reopenCollection(userId: string, collectionId: string): Promise<void> {
+        await sqlQuery(true, 'reopen_collection', [
+            { name: 'p_user_id', value: userId },
+            { name: 'p_collection_id', value: collectionId }
+        ]);
     }
 
     // Maps get_single_clue result to Clue

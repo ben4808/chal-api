@@ -249,46 +249,146 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE FUNCTION get_collection(
+CREATE OR REPLACE FUNCTION get_collection_batch(
+    p_user_id TEXT DEFAULT NULL,
     p_collection_id TEXT
 )
 RETURNS JSONB AS $$
 DECLARE
     result_json JSONB;
+    unseen_clues JSONB;
+    seen_clues JSONB;
+    all_clues JSONB;
+    batch_size INTEGER := 20;
+    unseen_count INTEGER := 13;
+    seen_count INTEGER := 7;
+    total_unseen INTEGER;
+    total_seen INTEGER;
+    clues_seen_24h INTEGER;
+    total_clues INTEGER;
 BEGIN
-    SELECT
+    -- If no user is provided, return randomized clues from all clues in the collection
+    IF p_user_id IS NULL THEN
+        SELECT jsonb_agg(
+            jsonb_build_object(
+                'id', c.id,
+                'entry', c.entry,
+                'lang', c.lang,
+                'sense_id', c.sense_id,
+                'custom_clue', c.custom_clue,
+                'custom_display_text', c.custom_display_text,
+                'source', c.source
+            ) ORDER BY random()
+        )
+        INTO result_json
+        FROM clue c
+        INNER JOIN collection__clue cc ON c.id = cc.clue_id
+        WHERE cc.collection_id = p_collection_id
+        LIMIT batch_size;
+        
+        RETURN COALESCE(result_json, '[]'::jsonb);
+    END IF;
+
+    -- Get counts for decision making
+    SELECT COUNT(*) INTO total_clues
+    FROM clue c
+    INNER JOIN collection__clue cc ON c.id = cc.clue_id
+    WHERE cc.collection_id = p_collection_id;
+
+    -- Count clues seen in the past 24 hours
+    SELECT COUNT(*) INTO clues_seen_24h
+    FROM clue c
+    INNER JOIN collection__clue cc ON c.id = cc.clue_id
+    INNER JOIN user__clue uc ON c.id = uc.clue_id
+    WHERE cc.collection_id = p_collection_id
+    AND uc.user_id = p_user_id
+    AND uc.last_solve >= NOW() - INTERVAL '24 hours';
+
+    -- Get unseen clues (clues user has never seen or not mastered)
+    SELECT jsonb_agg(
         jsonb_build_object(
             'id', c.id,
-            'puzzle_id', c.puzzle_id,
-            'title', c.title,
-            'author', c.author,
-            'description', c.description,
-            'created_date', c.created_date,
-            'modified_date', c.modified_date,
-            'metadata1', c.metadata1,
-            'metadata2', c.metadata2,
-            'creator', jsonb_build_object(
-                'id', u.id,
-                'email', u.email,
-                'first_name', u.first_name,
-                'last_name', u.last_name
+            'entry', c.entry,
+            'lang', c.lang,
+            'sense_id', c.sense_id,
+            'custom_clue', c.custom_clue,
+            'custom_display_text', c.custom_display_text,
+            'source', c.source,
+            'progress_data', jsonb_build_object(
+                'total_solves', COALESCE(uc.total_solves, 0),
+                'correct_solves', COALESCE(uc.correct_solves, 0),
+                'incorrect_solves', COALESCE(uc.incorrect_solves, 0),
+                'last_solve', uc.last_solve
             )
-        )
-    INTO
-        result_json
-    FROM
-        clue_collection c
-    LEFT JOIN
-        "user" u ON c.creator_id = u.id
-    WHERE
-        c.id = p_collection_id
-    LIMIT 1;
+        ) ORDER BY COALESCE(uc.last_solve, '1900-01-01'::date) ASC
+    )
+    INTO unseen_clues
+    FROM clue c
+    INNER JOIN collection__clue cc ON c.id = cc.clue_id
+    LEFT JOIN user__clue uc ON c.id = uc.clue_id AND uc.user_id = p_user_id
+    WHERE cc.collection_id = p_collection_id
+    AND (uc.user_id IS NULL OR uc.last_solve IS NULL)
+    AND (uc.correct_solves IS NULL OR uc.correct_solves < uc.correct_solves_needed); -- Not mastered
 
-    RETURN result_json;
+    -- Get seen clues (clues user has seen but not mastered, not seen in past 24 hours)
+    SELECT jsonb_agg(
+        jsonb_build_object(
+            'id', c.id,
+            'entry', c.entry,
+            'lang', c.lang,
+            'sense_id', c.sense_id,
+            'custom_clue', c.custom_clue,
+            'custom_display_text', c.custom_display_text,
+            'source', c.source,
+            'progress_data', jsonb_build_object(
+                'total_solves', uc.total_solves,
+                'correct_solves', uc.correct_solves,
+                'incorrect_solves', uc.incorrect_solves,
+                'last_solve', uc.last_solve
+            )
+        ) ORDER BY COALESCE(uc.last_solve, '1900-01-01'::date) ASC
+    )
+    INTO seen_clues
+    FROM clue c
+    INNER JOIN collection__clue cc ON c.id = cc.clue_id
+    INNER JOIN user__clue uc ON c.id = uc.clue_id
+    WHERE cc.collection_id = p_collection_id
+    AND uc.user_id = p_user_id
+    AND uc.last_solve IS NOT NULL
+    AND uc.last_solve < NOW() - INTERVAL '24 hours'
+    AND (uc.correct_solves IS NULL OR uc.correct_solves < uc.correct_solves_needed); -- Not mastered
+
+    -- Count available clues
+    SELECT 
+        COALESCE(jsonb_array_length(unseen_clues), 0),
+        COALESCE(jsonb_array_length(seen_clues), 0)
+    INTO total_unseen, total_seen;
+
+    -- Adjust counts based on availability with improved logic
+    IF total_seen < seen_count THEN
+        -- If fewer than 7 seen clues, fill remaining slots with unseen clues
+        seen_count := total_seen;
+        unseen_count := LEAST(batch_size - seen_count, total_unseen);
+    ELSIF total_unseen < unseen_count THEN
+        -- If fewer than 13 unseen clues, fill remaining slots with seen clues
+        unseen_count := total_unseen;
+        seen_count := LEAST(batch_size - unseen_count, total_seen);
+    END IF;
+
+    -- Combine and randomize the batch
+    SELECT jsonb_agg(value ORDER BY random())
+    INTO result_json
+    FROM (
+        SELECT value FROM jsonb_array_elements(COALESCE(unseen_clues, '[]'::jsonb)) LIMIT unseen_count
+        UNION ALL
+        SELECT value FROM jsonb_array_elements(COALESCE(seen_clues, '[]'::jsonb)) LIMIT seen_count
+    ) AS combined;
+
+    RETURN COALESCE(result_json, '[]'::jsonb);
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE FUNCTION get_clues(
+CREATE OR REPLACE FUNCTION get_crossword_clues(
     p_collection_id text,
     p_user_id text DEFAULT NULL
 )
@@ -537,5 +637,110 @@ BEGIN
             FROM entry_tags et
             WHERE et.lang = e.lang AND et."entry" = e."entry" AND et.tag = 'nyt_count'
         ));
+END;
+$$;
+
+-- Function to submit a user response to a clue
+CREATE OR REPLACE FUNCTION submit_user_response(
+    p_user_id text,
+    p_response jsonb
+)
+RETURNS void
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    _clue_id text;
+    _is_correct boolean;
+    _current_correct_solves integer;
+    _current_incorrect_solves integer;
+    _current_total_solves integer;
+    _correct_solves_needed integer;
+    _is_mastered boolean;
+    _default_solves_needed integer;
+BEGIN
+    -- Extract values from the response JSON
+    _clue_id := p_response->>'clueId';
+    _is_correct := (p_response->>'isCorrect')::boolean;
+    _default_solves_needed := 2;
+    
+    -- Get current progress data for the user and clue
+    SELECT 
+        COALESCE(uc.correct_solves, 0),
+        COALESCE(uc.incorrect_solves, 0),
+        COALESCE(uc.total_solves, 0),
+        COALESCE(uc.correct_solves_needed, _default_solves_needed),
+        COALESCE(uc.correct_solves, 0) >= COALESCE(uc.correct_solves_needed, _default_solves_needed)
+    INTO 
+        _current_correct_solves,
+        _current_incorrect_solves,
+        _current_total_solves,
+        _correct_solves_needed,
+        _is_mastered
+    FROM user_clue_progress uc
+    WHERE uc.user_id = p_user_id AND uc.clue_id = _clue_id;
+    
+    -- If no progress record exists, create one with default values
+    IF NOT FOUND THEN
+        INSERT INTO user_clue_progress (user_id, clue_id, correct_solves, incorrect_solves, total_solves, correct_solves_needed, last_solve)
+        VALUES (p_user_id, _clue_id, 0, 0, 0, _default_solves_needed, CURRENT_DATE)
+        ON CONFLICT (user_id, clue_id) DO NOTHING;
+        
+        -- Set default values for new record
+        _current_correct_solves := 0;
+        _current_incorrect_solves := 0;
+        _current_total_solves := 0;
+        _correct_solves_needed := _default_solves_needed;
+        _is_mastered := false;
+    END IF;
+    
+    -- Update the progress based on the response
+    IF _is_correct THEN
+        -- Correct response: increment correct solves (only if not already mastered)
+        IF NOT _is_mastered THEN
+            UPDATE user_clue_progress 
+            SET 
+                correct_solves = _current_correct_solves + 1,
+                total_solves = _current_total_solves + 1,
+                last_solve = CURRENT_DATE
+            WHERE user_id = p_user_id AND clue_id = _clue_id;
+        ELSE
+            -- Already mastered, only update last solve date
+            UPDATE user_clue_progress 
+            SET last_solve = CURRENT_DATE
+            WHERE user_id = p_user_id AND clue_id = _clue_id;
+        END IF;
+    ELSE
+        -- Incorrect response: increment incorrect solves and add 2 to correct solves needed
+        UPDATE user_clue_progress 
+        SET 
+            incorrect_solves = _current_incorrect_solves + 1,
+            total_solves = _current_total_solves + 1,
+            correct_solves_needed = _correct_solves_needed + 2,
+            last_solve = CURRENT_DATE
+        WHERE user_id = p_user_id AND clue_id = _clue_id;
+    END IF;
+END;
+$$;
+
+-- Function to reopen a collection by incrementing correctResponsesNeeded for mastered clues
+CREATE OR REPLACE FUNCTION reopen_collection(
+    p_user_id text,
+    p_collection_id text
+)
+RETURNS void
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    -- Increment correct_solves_needed by 1 for all mastered clues in the collection
+    -- A clue is considered mastered when correct_solves >= correct_solves_needed
+    UPDATE user_clue_progress 
+    SET correct_solves_needed = correct_solves_needed + 1
+    WHERE user_id = p_user_id 
+    AND clue_id IN (
+        SELECT cc.clue_id 
+        FROM collection__clue cc 
+        WHERE cc.collection_id = p_collection_id
+    )
+    AND correct_solves >= correct_solves_needed;
 END;
 $$;

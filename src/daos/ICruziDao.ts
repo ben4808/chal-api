@@ -3,14 +3,17 @@ import { ClueCollection } from "../models/ClueCollection";
 import { Entry } from "../models/Entry";
 import { EntryQueryParams } from "../models/EntryQueryParams";
 import { Sense } from "../models/Sense";
+import { UserResponse } from "../models/UserResponse";
 
 export interface ICruziDao {
   getCrosswordList(date: Date): Promise<ClueCollection[]>;
   getCollectionList(userId?: string): Promise<ClueCollection[]>;
 
   getCrosswordId(source: string, date: Date): Promise<string | null>;
-  getCollection(collectionId: string): Promise<ClueCollection | null>;
-  getClues(collectionId: string): Promise<Clue[]>;
+  getCollectionBatch(userId: string | undefined, collectionId: string): Promise<Clue[]>;
+  getCrosswordClues(collectionId: string): Promise<Clue[]>;
+  submitUserResponse(userId: string, response: UserResponse): Promise<void>;
+  reopenCollection(userId: string, collectionId: string): Promise<void>;
 
   addClueToCollection(collectionId: string, clue: Clue): Promise<void>;
   removeClueFromCollection(collectionId: string, clueId: string): Promise<void>;
