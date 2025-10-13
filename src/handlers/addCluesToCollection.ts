@@ -93,6 +93,8 @@ export async function addCluesToCollection(req: Request, res: Response) {
 
             await dao.addClueToCollection(collectionId, newClue);
         }
+        
+        return res.status(StatusCodes.OK).json({ message: "Clues added to collection successfully." });
     } catch (error) {
         console.error("Error adding/updating clue:", error);
         return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ message: "An error occurred while adding/updating the clue." });
