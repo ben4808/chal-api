@@ -177,9 +177,7 @@ LANGUAGE plpgsql
 AS $$
 BEGIN
     RETURN (
-        -- Aggregate the results into a single JSONB array
         SELECT jsonb_agg(
-            -- Construct a JSONB object for each clue collection
             jsonb_build_object(
                 'id', c.id,
                 'title', c.title,
@@ -189,33 +187,31 @@ BEGIN
                 'created_date', c.created_date,
                 'metadata1', c.metadata1,
                 'metadata2', c.metadata2,
-                -- Nest the creator's data into a 'creator' key
                 'creator', CASE WHEN u.id IS NOT NULL
                                 THEN jsonb_build_object(
                                     'creator_id', u.id,
                                     'creator_first_name', u.first_name,
-                                    'creator_last_name', u.last_name,
+                                    'creator_last_name', u.last_name
                                 )
                                 ELSE NULL
                           END,
-                'user_progress', CASE WHEN p_user_id IS NOT NULL THEN
+                'user_progress', CASE WHEN p_user_id IS NOT NULL AND uc.user_id IS NOT NULL THEN
                         jsonb_build_object(
                             'unseen', uc.unseen,
                             'in_progress', uc.in_progress,
-                            'completed', uc.completed,
+                            'completed', uc.completed
                         )
                     ELSE
                         NULL
                 END
             )
         )
-
-        FROM user__collection uc
-        JOIN clue_collection c ON uc.collection_id = c.id
+        FROM clue_collection c
         LEFT JOIN "user" u ON c.creator_id = u.id
-        WHERE uc.user_id = p_user_id
-        AND uc.collection_id = ANY(p_collection_ids)
-        AND (c.is_private = FALSE OR c.creator_id = p_user_id);
+        LEFT JOIN user__collection uc ON c.id = uc.collection_id AND uc.user_id = p_user_id
+        LEFT JOIN collection_access ca ON c.id = ca.collection_id AND ca.user_id = p_user_id
+        WHERE (p_user_id IS NULL AND c.is_private = FALSE) 
+           OR (p_user_id IS NOT NULL AND (c.is_private = FALSE OR c.creator_id = p_user_id OR ca.user_id IS NOT NULL))
     );
 END;
 $$;
@@ -250,8 +246,8 @@ END;
 $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION get_collection_batch(
-    p_user_id TEXT DEFAULT NULL,
-    p_collection_id TEXT
+    p_collection_id TEXT,
+    p_user_id TEXT DEFAULT NULL
 )
 RETURNS JSONB AS $$
 DECLARE
@@ -314,12 +310,12 @@ BEGIN
             'custom_clue', c.custom_clue,
             'custom_display_text', c.custom_display_text,
             'source', c.source,
-            'progress_data', jsonb_build_object(
-                'total_solves', COALESCE(uc.total_solves, 0),
-                'correct_solves', COALESCE(uc.correct_solves, 0),
-                'incorrect_solves', COALESCE(uc.incorrect_solves, 0),
-                'last_solve', uc.last_solve
-            )
+                'progress_data', jsonb_build_object(
+                    'total_solves', COALESCE(uc.correct_solves, 0) + COALESCE(uc.incorrect_solves, 0),
+                    'correct_solves', COALESCE(uc.correct_solves, 0),
+                    'incorrect_solves', COALESCE(uc.incorrect_solves, 0),
+                    'last_solve', uc.last_solve
+                )
         ) ORDER BY COALESCE(uc.last_solve, '1900-01-01'::date) ASC
     )
     INTO unseen_clues
@@ -341,7 +337,7 @@ BEGIN
             'custom_display_text', c.custom_display_text,
             'source', c.source,
             'progress_data', jsonb_build_object(
-                'total_solves', uc.total_solves,
+                'total_solves', uc.correct_solves + uc.incorrect_solves,
                 'correct_solves', uc.correct_solves,
                 'incorrect_solves', uc.incorrect_solves,
                 'last_solve', uc.last_solve
@@ -376,12 +372,18 @@ BEGIN
     END IF;
 
     -- Combine and randomize the batch
+    WITH unseen_sample AS (
+        SELECT value FROM jsonb_array_elements(COALESCE(unseen_clues, '[]'::jsonb)) LIMIT unseen_count
+    ),
+    seen_sample AS (
+        SELECT value FROM jsonb_array_elements(COALESCE(seen_clues, '[]'::jsonb)) LIMIT seen_count
+    )
     SELECT jsonb_agg(value ORDER BY random())
     INTO result_json
     FROM (
-        SELECT value FROM jsonb_array_elements(COALESCE(unseen_clues, '[]'::jsonb)) LIMIT unseen_count
+        SELECT value FROM unseen_sample
         UNION ALL
-        SELECT value FROM jsonb_array_elements(COALESCE(seen_clues, '[]'::jsonb)) LIMIT seen_count
+        SELECT value FROM seen_sample
     ) AS combined;
 
     RETURN COALESCE(result_json, '[]'::jsonb);
@@ -411,7 +413,7 @@ BEGIN
                 'user_progress', CASE
                     WHEN p_user_id IS NOT NULL THEN
                         jsonb_build_object(
-                            'total_solves', uc.total_solves,
+                            'total_solves', uc.correct_solves + uc.incorrect_solves,
                             'correct_solves', uc.correct_solves,
                             'incorrect_solves', uc.incorrect_solves,
                             'last_solve', uc.last_solve
@@ -506,14 +508,14 @@ BEGIN
                 'length', e.length,
                 'display_text', e.display_text,
                 'entry_type', e.entry_type,
-                'obscurity_score', e.obscurity_score,
+                'familiarity_score', e.familiarity_score,
                 'quality_score', e.quality_score,
                 'senses', jsonb_agg(
                     jsonb_build_object(
                         'id', es.id,
-                        'summary', es.summary,
-                        'definition', es.definition,
-                        'obscurity_score', es.obscurity_score,
+                        'summary', st.summary,
+                        'definition', st.definition,
+                        'familiarity_score', es.familiarity_score,
                         'quality_score', es.quality_score,
                         'source_ai', es.source_ai,
                         'example_sentences', (
@@ -537,11 +539,13 @@ BEGIN
         FROM
             entry e
         LEFT JOIN
-            entry_sense es ON e.entry = es.entry AND e.lang = es.lang
+            sense es ON e.entry = es.entry AND e.lang = es.lang
+        LEFT JOIN
+            sense_translation st ON es.id = st.sense_id
         WHERE
             e.entry = p_entry
         GROUP BY
-            e.entry, e.lang, e.length, e.display_text, e.entry_type, e.obscurity_score, e.quality_score
+            e.entry, e.lang, e.length, e.display_text, e.entry_type, e.familiarity_score, e.quality_score
     );
 END;
 $$ LANGUAGE plpgsql;
@@ -667,7 +671,7 @@ BEGIN
     SELECT 
         COALESCE(uc.correct_solves, 0),
         COALESCE(uc.incorrect_solves, 0),
-        COALESCE(uc.total_solves, 0),
+        COALESCE(uc.correct_solves, 0) + COALESCE(uc.incorrect_solves, 0),
         COALESCE(uc.correct_solves_needed, _default_solves_needed),
         COALESCE(uc.correct_solves, 0) >= COALESCE(uc.correct_solves_needed, _default_solves_needed)
     INTO 
@@ -676,13 +680,13 @@ BEGIN
         _current_total_solves,
         _correct_solves_needed,
         _is_mastered
-    FROM user_clue_progress uc
+    FROM user__clue uc
     WHERE uc.user_id = p_user_id AND uc.clue_id = _clue_id;
     
     -- If no progress record exists, create one with default values
     IF NOT FOUND THEN
-        INSERT INTO user_clue_progress (user_id, clue_id, correct_solves, incorrect_solves, total_solves, correct_solves_needed, last_solve)
-        VALUES (p_user_id, _clue_id, 0, 0, 0, _default_solves_needed, CURRENT_DATE)
+        INSERT INTO user__clue (user_id, clue_id, correct_solves, incorrect_solves, correct_solves_needed, last_solve)
+        VALUES (p_user_id, _clue_id, 0, 0, _default_solves_needed, CURRENT_DATE)
         ON CONFLICT (user_id, clue_id) DO NOTHING;
         
         -- Set default values for new record
@@ -697,24 +701,22 @@ BEGIN
     IF _is_correct THEN
         -- Correct response: increment correct solves (only if not already mastered)
         IF NOT _is_mastered THEN
-            UPDATE user_clue_progress 
+            UPDATE user__clue 
             SET 
                 correct_solves = _current_correct_solves + 1,
-                total_solves = _current_total_solves + 1,
                 last_solve = CURRENT_DATE
             WHERE user_id = p_user_id AND clue_id = _clue_id;
         ELSE
             -- Already mastered, only update last solve date
-            UPDATE user_clue_progress 
+            UPDATE user__clue 
             SET last_solve = CURRENT_DATE
             WHERE user_id = p_user_id AND clue_id = _clue_id;
         END IF;
     ELSE
         -- Incorrect response: increment incorrect solves and add 2 to correct solves needed
-        UPDATE user_clue_progress 
+        UPDATE user__clue 
         SET 
             incorrect_solves = _current_incorrect_solves + 1,
-            total_solves = _current_total_solves + 1,
             correct_solves_needed = _correct_solves_needed + 2,
             last_solve = CURRENT_DATE
         WHERE user_id = p_user_id AND clue_id = _clue_id;
@@ -733,7 +735,7 @@ AS $$
 BEGIN
     -- Increment correct_solves_needed by 1 for all mastered clues in the collection
     -- A clue is considered mastered when correct_solves >= correct_solves_needed
-    UPDATE user_clue_progress 
+    UPDATE user__clue 
     SET correct_solves_needed = correct_solves_needed + 1
     WHERE user_id = p_user_id 
     AND clue_id IN (

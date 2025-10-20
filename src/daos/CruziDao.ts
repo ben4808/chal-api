@@ -103,11 +103,11 @@ class CruziDao implements ICruziDao {
             { name: 'p_user_id', value: userId || null }
         ]);
 
-        if (!result || result.length === 0 || !result[0].jsonb_agg) {
+        if (!result || result.length === 0 || !result[0].get_clue_collections) {
             return [];
         }
 
-        const rawData = result[0].jsonb_agg;
+        const rawData = result[0].get_clue_collections;
         return rawData.map((raw: any) => ({
             id: raw.id,
             title: raw.title,

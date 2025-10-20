@@ -2,11 +2,11 @@ import  { Pool } from 'pg';
 import { PostgresParameter } from './PostgresParameter';
 
 let pool = new Pool({
-    user: process.env.db_user,
-    host: process.env.db_host,
-    database: 'cruzi',
-    password: process.env.db_password,
-    port: 5432,
+    user: process.env.DB_USER,
+    host: process.env.DB_HOST || 'localhost',
+    database: process.env.DB_NAME || 'cruzi',
+    password: process.env.DB_PASSWORD,
+    port: parseInt(process.env.DB_PORT || '5432'),
 });
 
 export async function sqlQuery(isFunction: boolean, queryOrFunctionName: string, parameters?: PostgresParameter[]): Promise<any[]> {
