@@ -10,7 +10,8 @@ export interface ICruziDao {
   getCollectionList(userId?: string): Promise<ClueCollection[]>;
 
   getCrosswordId(source: string, date: Date): Promise<string | null>;
-  getCollectionBatch(userId: string | undefined, collectionId: string): Promise<Clue[]>;
+  selectCollectionBatch(userId: string | undefined, collectionId: string): Promise<string[]>;
+  populateCollectionBatch(clueIds: string[], userId?: string): Promise<Clue[]>;
   getCrosswordClues(collectionId: string): Promise<Clue[]>;
   submitUserResponse(userId: string, response: UserResponse): Promise<void>;
   reopenCollection(userId: string, collectionId: string): Promise<void>;

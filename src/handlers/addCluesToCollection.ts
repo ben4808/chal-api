@@ -85,7 +85,7 @@ export async function addCluesToCollection(req: Request, res: Response) {
                 lang: clue.entry.lang,
               };
               newClue.customClue = clue.clue;
-              newClue.senseId = clue.clue.senseId;
+              newClue.sense = clue.clue.sense;
               newClue.customDisplayText = clue.clue.customDisplayText;
               newClue.source = clue.clue.source;
               newClue.translatedClues = clue.clue.translatedClues;

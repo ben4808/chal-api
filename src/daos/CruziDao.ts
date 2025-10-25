@@ -139,25 +139,50 @@ class CruziDao implements ICruziDao {
         return result[0].get_crossword_id.collection_id;
     }
 
-    // Maps get_collection_batch result to Clue[]
-    public async getCollectionBatch(userId: string | undefined, collectionId: string): Promise<Clue[]> {
-        const result = await sqlQuery(true, 'get_collection_batch', [
+    // Maps select_collection_batch result to string[] (clue IDs)
+    public async selectCollectionBatch(userId: string | undefined, collectionId: string): Promise<string[]> {
+        const result = await sqlQuery(true, 'select_collection_batch', [
             { name: 'p_collection_id', value: collectionId },
             { name: 'p_user_id', value: userId || null }
         ]);
 
-        if (!result || result.length === 0 || !result[0].get_collection_batch) {
+        if (!result || result.length === 0 || !result[0].select_collection_batch) {
             return [];
         }
 
-        const rawData = result[0].get_collection_batch;
+        return result[0].select_collection_batch;
+    }
+
+    // Maps populate_collection_batch result to Clue[]
+    public async populateCollectionBatch(clueIds: string[], userId?: string): Promise<Clue[]> {
+        const result = await sqlQuery(true, 'populate_collection_batch', [
+            { name: 'p_clue_ids', value: clueIds },
+            { name: 'p_user_id', value: userId || null }
+        ]);
+
+        if (!result || result.length === 0 || !result[0].populate_collection_batch) {
+            return [];
+        }
+
+        const rawData = result[0].populate_collection_batch;
         return rawData.map((raw: any) => ({
             id: raw.id,
             entry: raw.entry ? {
                 entry: raw.entry,
                 lang: raw.lang,
             } as Entry : undefined,
-            senseId: raw.sense_id,
+            sense: raw.sense ? {
+                id: raw.sense.id,
+                partOfSpeech: raw.sense.partOfSpeech,
+                commonness: raw.sense.commonness,
+                summary: raw.sense.summary,
+                definition: raw.sense.definition,
+                exampleSentences: raw.sense.exampleSentences,
+                translations: raw.sense.translations,
+                familiarityScore: raw.sense.familiarityScore,
+                qualityScore: raw.sense.qualityScore,
+                sourceAi: raw.sense.sourceAi,
+            } as Sense : undefined,
             customClue: raw.custom_clue,
             customDisplayText: raw.custom_display_text,
             source: raw.source,

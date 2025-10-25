@@ -245,16 +245,16 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE FUNCTION get_collection_batch(
+-- Function to select clue IDs for a collection batch based on user progress
+CREATE OR REPLACE FUNCTION select_collection_batch(
     p_collection_id TEXT,
     p_user_id TEXT DEFAULT NULL
 )
 RETURNS JSONB AS $$
 DECLARE
     result_json JSONB;
-    unseen_clues JSONB;
-    seen_clues JSONB;
-    all_clues JSONB;
+    unseen_clue_ids JSONB;
+    seen_clue_ids JSONB;
     batch_size INTEGER := 20;
     unseen_count INTEGER := 13;
     seen_count INTEGER := 7;
@@ -262,20 +262,11 @@ DECLARE
     total_seen INTEGER;
     clues_seen_24h INTEGER;
     total_clues INTEGER;
+    all_mastered BOOLEAN := FALSE;
 BEGIN
-    -- If no user is provided, return randomized clues from all clues in the collection
+    -- If no user is provided, return randomized clue IDs from all clues in the collection
     IF p_user_id IS NULL THEN
-        SELECT jsonb_agg(
-            jsonb_build_object(
-                'id', c.id,
-                'entry', c.entry,
-                'lang', c.lang,
-                'sense_id', c.sense_id,
-                'custom_clue', c.custom_clue,
-                'custom_display_text', c.custom_display_text,
-                'source', c.source
-            ) ORDER BY random()
-        )
+        SELECT jsonb_agg(c.id ORDER BY random())
         INTO result_json
         FROM clue c
         INNER JOIN collection__clue cc ON c.id = cc.clue_id
@@ -285,11 +276,13 @@ BEGIN
         RETURN COALESCE(result_json, '[]'::jsonb);
     END IF;
 
-    -- Get counts for decision making
-    SELECT COUNT(*) INTO total_clues
+    -- Check if all clues are mastered
+    SELECT COUNT(*) = 0 INTO all_mastered
     FROM clue c
     INNER JOIN collection__clue cc ON c.id = cc.clue_id
-    WHERE cc.collection_id = p_collection_id;
+    LEFT JOIN user__clue uc ON c.id = uc.clue_id AND uc.user_id = p_user_id
+    WHERE cc.collection_id = p_collection_id
+    AND (uc.correct_solves IS NULL OR uc.correct_solves < uc.correct_solves_needed);
 
     -- Count clues seen in the past 24 hours
     SELECT COUNT(*) INTO clues_seen_24h
@@ -300,51 +293,30 @@ BEGIN
     AND uc.user_id = p_user_id
     AND uc.last_solve >= NOW() - INTERVAL '24 hours';
 
-    -- Get unseen clues (clues user has never seen or not mastered)
-    SELECT jsonb_agg(
-        jsonb_build_object(
-            'id', c.id,
-            'entry', c.entry,
-            'lang', c.lang,
-            'sense_id', c.sense_id,
-            'custom_clue', c.custom_clue,
-            'custom_display_text', c.custom_display_text,
-            'source', c.source,
-                'progress_data', jsonb_build_object(
-                    'total_solves', COALESCE(uc.correct_solves, 0) + COALESCE(uc.incorrect_solves, 0),
-                    'correct_solves', COALESCE(uc.correct_solves, 0),
-                    'incorrect_solves', COALESCE(uc.incorrect_solves, 0),
-                    'last_solve', uc.last_solve
-                )
-        ) ORDER BY COALESCE(uc.last_solve, '1900-01-01'::date) ASC
-    )
-    INTO unseen_clues
+    -- Get total clues count
+    SELECT COUNT(*) INTO total_clues
+    FROM clue c
+    INNER JOIN collection__clue cc ON c.id = cc.clue_id
+    WHERE cc.collection_id = p_collection_id;
+
+    -- If all clues have been seen in the past 24 hours, return empty batch
+    IF clues_seen_24h >= total_clues THEN
+        RETURN '[]'::jsonb;
+    END IF;
+
+    -- Get unseen clue IDs (clues user has never seen or not mastered)
+    SELECT jsonb_agg(c.id ORDER BY COALESCE(uc.last_solve, '1900-01-01'::date) ASC)
+    INTO unseen_clue_ids
     FROM clue c
     INNER JOIN collection__clue cc ON c.id = cc.clue_id
     LEFT JOIN user__clue uc ON c.id = uc.clue_id AND uc.user_id = p_user_id
     WHERE cc.collection_id = p_collection_id
-    AND (uc.user_id IS NULL OR uc.last_solve IS NULL)
-    AND (uc.correct_solves IS NULL OR uc.correct_solves < uc.correct_solves_needed); -- Not mastered
+    AND (uc.user_id IS NULL OR uc.last_solve IS NULL OR (uc.correct_solves IS NULL OR uc.correct_solves < uc.correct_solves_needed))
+    AND (all_mastered OR uc.correct_solves IS NULL OR uc.correct_solves < uc.correct_solves_needed);
 
-    -- Get seen clues (clues user has seen but not mastered, not seen in past 24 hours)
-    SELECT jsonb_agg(
-        jsonb_build_object(
-            'id', c.id,
-            'entry', c.entry,
-            'lang', c.lang,
-            'sense_id', c.sense_id,
-            'custom_clue', c.custom_clue,
-            'custom_display_text', c.custom_display_text,
-            'source', c.source,
-            'progress_data', jsonb_build_object(
-                'total_solves', uc.correct_solves + uc.incorrect_solves,
-                'correct_solves', uc.correct_solves,
-                'incorrect_solves', uc.incorrect_solves,
-                'last_solve', uc.last_solve
-            )
-        ) ORDER BY COALESCE(uc.last_solve, '1900-01-01'::date) ASC
-    )
-    INTO seen_clues
+    -- Get seen clue IDs (clues user has seen but not mastered, not seen in past 24 hours)
+    SELECT jsonb_agg(c.id ORDER BY COALESCE(uc.last_solve, '1900-01-01'::date) ASC)
+    INTO seen_clue_ids
     FROM clue c
     INNER JOIN collection__clue cc ON c.id = cc.clue_id
     INNER JOIN user__clue uc ON c.id = uc.clue_id
@@ -352,12 +324,12 @@ BEGIN
     AND uc.user_id = p_user_id
     AND uc.last_solve IS NOT NULL
     AND uc.last_solve < NOW() - INTERVAL '24 hours'
-    AND (uc.correct_solves IS NULL OR uc.correct_solves < uc.correct_solves_needed); -- Not mastered
+    AND (all_mastered OR uc.correct_solves IS NULL OR uc.correct_solves < uc.correct_solves_needed);
 
     -- Count available clues
     SELECT 
-        COALESCE(jsonb_array_length(unseen_clues), 0),
-        COALESCE(jsonb_array_length(seen_clues), 0)
+        COALESCE(jsonb_array_length(unseen_clue_ids), 0),
+        COALESCE(jsonb_array_length(seen_clue_ids), 0)
     INTO total_unseen, total_seen;
 
     -- Adjust counts based on availability with improved logic
@@ -373,10 +345,10 @@ BEGIN
 
     -- Combine and randomize the batch
     WITH unseen_sample AS (
-        SELECT value FROM jsonb_array_elements(COALESCE(unseen_clues, '[]'::jsonb)) LIMIT unseen_count
+        SELECT value FROM jsonb_array_elements(COALESCE(unseen_clue_ids, '[]'::jsonb)) LIMIT unseen_count
     ),
     seen_sample AS (
-        SELECT value FROM jsonb_array_elements(COALESCE(seen_clues, '[]'::jsonb)) LIMIT seen_count
+        SELECT value FROM jsonb_array_elements(COALESCE(seen_clue_ids, '[]'::jsonb)) LIMIT seen_count
     )
     SELECT jsonb_agg(value ORDER BY random())
     INTO result_json
@@ -385,6 +357,131 @@ BEGIN
         UNION ALL
         SELECT value FROM seen_sample
     ) AS combined;
+
+    RETURN COALESCE(result_json, '[]'::jsonb);
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to populate full clue data for a batch of clue IDs
+CREATE OR REPLACE FUNCTION populate_collection_batch(
+    p_clue_ids JSONB,
+    p_user_id TEXT DEFAULT NULL
+)
+RETURNS JSONB AS $$
+DECLARE
+    result_json JSONB;
+BEGIN
+    -- If no clue IDs provided, return empty array
+    IF p_clue_ids IS NULL OR jsonb_array_length(p_clue_ids) = 0 THEN
+        RETURN '[]'::jsonb;
+    END IF;
+
+    -- Get full clue data for the provided clue IDs with all related data
+    WITH clue_data AS (
+        SELECT 
+            c.id,
+            c.entry,
+            c.lang,
+            c.sense_id,
+            c.custom_clue,
+            c.custom_display_text,
+            c.source,
+            s.id as sense_id_full,
+            s.part_of_speech,
+            s.commonness,
+            s.familiarity_score,
+            s.quality_score,
+            s.source_ai,
+            uc.correct_solves,
+            uc.incorrect_solves,
+            uc.last_solve,
+            uc.correct_solves_needed,
+            -- Get sense translations directly
+            COALESCE(
+                (SELECT jsonb_agg(DISTINCT
+                    jsonb_build_object(
+                        'lang', st2.lang,
+                        'summary', st2.summary,
+                        'definition', st2.definition
+                    )
+                )
+                FROM sense_translation st2 
+                WHERE st2.sense_id = s.id),
+                '[]'::jsonb
+            ) as sense_translations,
+            -- Get example sentences directly
+            COALESCE(
+                (SELECT jsonb_agg(DISTINCT
+                    jsonb_build_object(
+                        'id', es2.id,
+                        'sentence', est2.sentence,
+                        'lang', est2.lang
+                    )
+                )
+                FROM example_sentence es2
+                LEFT JOIN example_sentence_translation est2 ON es2.id = est2.example_id
+                WHERE es2.sense_id = s.id),
+                '[]'::jsonb
+            ) as example_sentences
+        FROM clue c
+        LEFT JOIN sense s ON c.sense_id = s.id
+        LEFT JOIN user__clue uc ON c.id = uc.clue_id AND uc.user_id = p_user_id
+        WHERE c.id = ANY(SELECT jsonb_array_elements_text(p_clue_ids)::text)
+    ),
+    clue_order AS (
+        SELECT 
+            jsonb_array_elements_text(p_clue_ids)::text AS clue_id, 
+            ordinality AS order_index
+        FROM jsonb_array_elements(p_clue_ids) WITH ORDINALITY
+    )
+    SELECT jsonb_agg(
+        jsonb_build_object(
+            'id', cd.id,
+            'entry', cd.entry,
+            'lang', cd.lang,
+            'sense_id', cd.sense_id,
+            'custom_clue', cd.custom_clue,
+            'custom_display_text', cd.custom_display_text,
+            'source', cd.source,
+            'sense', CASE 
+                WHEN cd.sense_id IS NOT NULL THEN
+                    jsonb_build_object(
+                        'id', cd.sense_id_full,
+                        'partOfSpeech', cd.part_of_speech,
+                        'commonness', cd.commonness,
+                        'summary', (
+                            SELECT jsonb_object_agg(lang, summary)
+                            FROM jsonb_to_recordset(cd.sense_translations) AS t(lang text, summary text)
+                            WHERE summary IS NOT NULL
+                        ),
+                        'definition', (
+                            SELECT jsonb_object_agg(lang, definition)
+                            FROM jsonb_to_recordset(cd.sense_translations) AS t(lang text, definition text)
+                            WHERE definition IS NOT NULL
+                        ),
+                        'exampleSentences', cd.example_sentences,
+                        'translations', cd.sense_translations,
+                        'familiarityScore', cd.familiarity_score,
+                        'qualityScore', cd.quality_score,
+                        'sourceAi', cd.source_ai
+                    )
+                ELSE NULL
+            END,
+            'progress_data', CASE 
+                WHEN p_user_id IS NOT NULL THEN
+                    jsonb_build_object(
+                        'total_solves', COALESCE(cd.correct_solves, 0) + COALESCE(cd.incorrect_solves, 0),
+                        'correct_solves', COALESCE(cd.correct_solves, 0),
+                        'incorrect_solves', COALESCE(cd.incorrect_solves, 0),
+                        'last_solve', cd.last_solve
+                    )
+                ELSE NULL
+            END
+        ) ORDER BY co.order_index
+    )
+    INTO result_json
+    FROM clue_data cd
+    LEFT JOIN clue_order co ON cd.id = co.clue_id;
 
     RETURN COALESCE(result_json, '[]'::jsonb);
 END;

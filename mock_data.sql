@@ -76,17 +76,13 @@ INSERT INTO clue_collection (id, title, author, description, created_date, modif
 
 -- Insert collection-clue relationships
 INSERT INTO collection__clue (collection_id, clue_id, "order", metadata1, metadata2) VALUES
--- Collection 001: Guaraní Básico - Familia y Emociones
-('collection_001', 'clue_001', 1, NULL, NULL),
-('collection_001', 'clue_002', 2, NULL, NULL),
-('collection_001', 'clue_003', 3, NULL, NULL),
-('collection_001', 'clue_004', 4, NULL, NULL),
--- Collection 003: Guaraní Avanzado - Verbos de Acción
-('collection_003', 'clue_002', 1, NULL, NULL),
-('collection_003', 'clue_003', 2, NULL, NULL),
-('collection_003', 'clue_005', 3, NULL, NULL),
-('collection_003', 'clue_006', 4, NULL, NULL),
-('collection_003', 'clue_007', 5, NULL, NULL);
+('collection_003', 'clue_001', 1, NULL, NULL),
+('collection_003', 'clue_004', 4, NULL, NULL),
+('collection_003', 'clue_002', 2, NULL, NULL),
+('collection_003', 'clue_003', 3, NULL, NULL),
+('collection_003', 'clue_005', 5, NULL, NULL),
+('collection_003', 'clue_006', 6, NULL, NULL),
+('collection_003', 'clue_007', 7, NULL, NULL);
 
 -- Insert user-collection relationships (users who have access to collections)
 INSERT INTO user__collection (user_id, collection_id, unseen, in_progress, completed) VALUES
