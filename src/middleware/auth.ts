@@ -1,23 +1,14 @@
 import { Request, Response, NextFunction } from 'express';
+import { verifyJWT } from '../lib/jwt';
 
 function extractUserIdFromBearerToken(authHeader?: string | null): string | undefined {
     if (!authHeader) return undefined;
     const bearerPrefix = 'Bearer ';
     if (!authHeader.startsWith(bearerPrefix)) return undefined;
     const token = authHeader.substring(bearerPrefix.length).trim();
-    try {
-        const parts = token.split('.');
-        if (parts.length >= 2) {
-            const payloadJson = Buffer.from(parts[1].replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8');
-            const payload = JSON.parse(payloadJson);
-            if (payload && typeof payload.sub === 'string' && payload.sub.length > 0) {
-                return payload.sub;
-            }
-        }
-    } catch (err) {
-        // Ignore and treat as unauthenticated
-    }
-    return undefined;
+    
+    const payload = verifyJWT(token);
+    return payload?.sub;
 }
 
 export function authenticateOptional(req: Request, res: Response, next: NextFunction) {

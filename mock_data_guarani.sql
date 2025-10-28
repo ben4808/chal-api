@@ -1,46 +1,29 @@
--- Mock Data for Chal API
+-- Mock Data for Guarani clues
 -- This file contains sample data for testing and development
 
 -- Insert sample users/authors
 INSERT INTO "user" (id, first_name, last_name, email, native_lang, created_at) VALUES
-('user_001', 'María', 'González', 'maria.gonzalez@example.com', 'es', '2024-01-01 10:00:00'),
-('user_002', 'Carlos', 'Rodríguez', 'carlos.rodriguez@example.com', 'es', '2024-01-02 10:00:00'),
-('user_003', 'Ana', 'Silva', 'ana.silva@example.com', 'gn', '2024-01-03 10:00:00'),
-('user_004', 'Luis', 'Martínez', 'luis.martinez@example.com', 'es', '2024-01-04 10:00:00'),
-('user_005', 'Elena', 'Fernández', 'elena.fernandez@example.com', 'en', '2024-01-05 10:00:00');
-
--- Insert sample publications
-INSERT INTO publication (id, "name") VALUES
-('pub_001', 'New York Times'),
-('pub_002', 'Los Angeles Times'),
-('pub_003', 'Guaraní Learning'),
-('pub_004', 'Cruzi');
-
--- Insert sample puzzles
-INSERT INTO puzzle (id, publication_id, "date", lang, author, title, copyright, notes, width, height, source_link) VALUES
-('puzzle_001', 'New York Times', '2024-01-15', 'en', 'Will Shortz', 'NYT Crossword January 15, 2024', '© 2024 The New York Times', 'Daily crossword puzzle', 15, 15, 'https://www.nytimes.com/crosswords'),
-('puzzle_002', 'Los Angeles Times', '2024-01-16', 'en', 'Rich Norris', 'LA Times Crossword January 16, 2024', '© 2024 Los Angeles Times', 'Daily crossword puzzle', 15, 15, 'https://www.latimes.com/games/crossword'),
-('puzzle_003', 'Guaraní Learning', '2024-01-17', 'gn', 'Ana Silva', 'Guaraní Básico Collection', '© 2024 Guaraní Learning', 'Educational Guaraní language collection', 12, 12, 'https://guaranilearning.org');
+('user_001', 'Cruzi', null, 'cruzi@gmail.com', 'en', '2024-01-01 10:00:00');
 
 -- Insert sample entries (from sampleGuaraniClues.json)
 INSERT INTO entry ("entry", root_entry, lang, "length", display_text, entry_type, familiarity_score, quality_score) VALUES
-('CHOKOLÁTE', 'chokoláte', 'gn', 9, 'chokoláte', 'word', 7, 8),
-('HAYHU', 'hayhu', 'gn', 5, 'hayhu', 'word', 9, 9),
-('MOÑE''Ẽ', 'moñe''ẽ', 'gn', 7, 'moñe''ẽ', 'word', 8, 8),
-('KUATIAÑE''Ẽ', 'kuatiañe''ẽ', 'gn', 10, 'kuatiañe''ẽ', 'word', 6, 7),
-('JEROKY', 'jeroky', 'gn', 6, 'jeroky', 'word', 8, 8),
-('ARETE', 'arete', 'gn', 5, 'arete', 'word', 7, 7),
-('KANE''Õ', 'kane''õ', 'gn', 6, 'kane''õ', 'word', 5, 6);
+('CHOKOLÁTE', null, 'gn', 9, 'chokoláte', 'word', 30, 30),
+('HAYHU', null, 'gn', 5, 'hayhu', 'word', 40, 40),
+('MOÑE''Ẽ', null, 'gn', 7, 'moñe''ẽ', 'word', 20, 20),
+('KUATIAÑE''Ẽ', null, 'gn', 10, 'kuatiañe''ẽ', 'word', null, null),
+('JEROKY', null, 'gn', 6, 'jeroky', 'word', null, null),
+('ARETE', null, 'gn', 5, 'arete', 'word', null, null),
+('KANE''Õ', null, 'gn', 6, 'kane''õ', 'word', null, null);
 
 -- Insert sample senses (from sampleGuaraniClues.json)
 INSERT INTO sense (id, "entry", lang, part_of_speech, commonness, familiarity_score, quality_score, source_ai) VALUES
-('sense_001', 'CHOKOLÁTE', 'gn', 'noun', 'primary', 7, 8, 'gemini2.5'),
-('sense_002', 'HAYHU', 'gn', 'verb', 'primary', 9, 9, 'gemini2.5'),
-('sense_003', 'MOÑE''Ẽ', 'gn', 'verb', 'primary', 8, 8, 'gemini2.5'),
-('sense_004', 'KUATIAÑE''Ẽ', 'gn', 'noun', 'primary', 6, 7, 'gemini2.5'),
-('sense_005', 'JEROKY', 'gn', 'verb', 'primary', 8, 8, 'gemini2.5'),
-('sense_006', 'ARETE', 'gn', 'noun', 'primary', 7, 7, 'gemini2.5'),
-('sense_007', 'KANE''Õ', 'gn', 'adjective', 'primary', 5, 6, 'gemini2.5');
+('sense_001', 'CHOKOLÁTE', 'gn', 'noun', 'primary', null, null, 'common_words'),
+('sense_002', 'HAYHU', 'gn', 'verb', 'primary', null, null, 'common_words'),
+('sense_003', 'MOÑE''Ẽ', 'gn', 'verb', 'primary', null, null, 'common_words'),
+('sense_004', 'KUATIAÑE''Ẽ', 'gn', 'noun', 'primary', null, null, 'common_words'),
+('sense_005', 'JEROKY', 'gn', 'verb', 'primary', null, null, 'common_words'),
+('sense_006', 'ARETE', 'gn', 'noun', 'primary', null, null, 'common_words'),
+('sense_007', 'KANE''Õ', 'gn', 'adjective', 'primary', null, null, 'common_words');
 
 -- Insert sense translations
 INSERT INTO sense_translation (sense_id, lang, summary, definition) VALUES
@@ -70,9 +53,8 @@ INSERT INTO clue (id, entry, lang, sense_id, custom_clue, custom_display_text, s
 ('clue_007', 'KANE''Õ', 'gn', 'sense_007', NULL, NULL, 'Isabel');
 
 -- Insert sample clue collections
-INSERT INTO clue_collection (id, title, author, description, created_date, modified_date, is_private, metadata1, metadata2, creator_id, puzzle_id) VALUES
-('collection_001', 'Idaho Counties', 'María Fuentes', 'Learn Idaho counties, county seats, and numbers.', '2024-01-15 10:00:00', '2024-01-15 10:00:00', false, NULL, NULL, 'user_001', 'puzzle_003'),
-('collection_003', 'Guaraní Learning', 'Ana Silva', 'Palabras básicas en guaraní.', '2024-01-16 14:30:00', '2024-01-16 14:30:00', false, NULL, NULL, 'user_003', 'puzzle_003');
+INSERT INTO clue_collection (id, title, author, description, created_date, modified_date, is_private, metadata1, metadata2, creator_id, puzzle_id, clue_count) VALUES
+('collection_003', 'Guaraní Learning', 'Cruzi', 'Palabras básicas en guaraní.', '2024-01-16 14:30:00', '2024-01-16 14:30:00', false, NULL, NULL, 'user_001', null, 7);
 
 -- Insert collection-clue relationships
 INSERT INTO collection__clue (collection_id, clue_id, "order", metadata1, metadata2) VALUES
@@ -83,71 +65,6 @@ INSERT INTO collection__clue (collection_id, clue_id, "order", metadata1, metada
 ('collection_003', 'clue_005', 5, NULL, NULL),
 ('collection_003', 'clue_006', 6, NULL, NULL),
 ('collection_003', 'clue_007', 7, NULL, NULL);
-
--- Insert user-collection relationships (users who have access to collections)
-INSERT INTO user__collection (user_id, collection_id, unseen, in_progress, completed) VALUES
--- User 001 (María) - has access to all collections
-('user_001', 'collection_001', 0, 2, 2),  -- Guaraní Básico - partially completed
-('user_001', 'collection_003', 3, 1, 1),  -- Guaraní Avanzado - mostly unseen
--- User 002 (Carlos) - has access to Guaraní Básico
-('user_002', 'collection_001', 1, 1, 2),  -- Guaraní Básico - good progress
--- User 003 (Ana) - creator of Guaraní Avanzado, has access to all
-('user_003', 'collection_001', 2, 0, 2),  -- Guaraní Básico - mostly completed
-('user_003', 'collection_003', 2, 2, 1),  -- Guaraní Avanzado - moderate progress
--- User 004 (Luis) - has access to public collections only
-('user_004', 'collection_001', 3, 1, 0),  -- Guaraní Básico - just started
--- User 005 (Elena) - has access to all collections
-('user_005', 'collection_001', 0, 0, 4),  -- Guaraní Básico - completed
-('user_005', 'collection_003', 4, 0, 1);  -- Guaraní Avanzado - mostly unseen
-
--- Insert user-clue progress data
-INSERT INTO user__clue (user_id, clue_id, correct_solves_needed, correct_solves, incorrect_solves, last_solve) VALUES
--- User 001 progress
-('user_001', 'clue_001', 2, 2, 0, '2024-01-15'),  -- CHOKOLÁTE - mastered
-('user_001', 'clue_002', 2, 1, 1, '2024-01-15'),  -- HAYHU - in progress
-('user_001', 'clue_003', 2, 0, 2, '2024-01-15'),  -- MOÑE'Ẽ - struggling
-('user_001', 'clue_004', 2, 2, 0, '2024-01-15'),  -- KUATIAÑE'Ẽ - mastered
--- User 002 progress
-('user_002', 'clue_001', 2, 2, 0, '2024-01-15'),  -- CHOKOLÁTE - mastered
-('user_002', 'clue_002', 2, 2, 0, '2024-01-15'),  -- HAYHU - mastered
-('user_002', 'clue_003', 2, 2, 0, '2024-01-15'),  -- MOÑE'Ẽ - mastered
-('user_002', 'clue_004', 2, 2, 0, '2024-01-15'),  -- KUATIAÑE'Ẽ - mastered
--- User 003 progress
-('user_003', 'clue_001', 2, 2, 0, '2024-01-16'),  -- CHOKOLÁTE - mastered
-('user_003', 'clue_002', 2, 2, 0, '2024-01-16'),  -- HAYHU - mastered
-('user_003', 'clue_003', 2, 0, 1, '2024-01-16'),  -- MOÑE'Ẽ - struggling
-('user_003', 'clue_004', 2, 2, 0, '2024-01-16'),  -- KUATIAÑE'Ẽ - mastered
-('user_003', 'clue_005', 2, 1, 0, '2024-01-16'),  -- JEROKY - in progress
-('user_003', 'clue_006', 2, 1, 1, '2024-01-16'),  -- ARETE - in progress
--- User 004 progress
-('user_004', 'clue_001', 2, 0, 1, '2024-01-16'),  -- CHOKOLÁTE - struggling
-('user_004', 'clue_002', 2, 1, 0, '2024-01-16'),  -- HAYHU - in progress
--- User 005 progress
-('user_005', 'clue_001', 2, 2, 0, '2024-01-17'),  -- CHOKOLÁTE - mastered
-('user_005', 'clue_002', 2, 2, 0, '2024-01-17'),  -- HAYHU - mastered
-('user_005', 'clue_003', 2, 2, 0, '2024-01-17'),  -- MOÑE'Ẽ - mastered
-('user_005', 'clue_004', 2, 2, 0, '2024-01-17'),  -- KUATIAÑE'Ẽ - mastered
-('user_005', 'clue_007', 2, 2, 0, '2024-01-17');  -- KANE'Õ - mastered
-
--- Insert entry tags
-INSERT INTO entry_tags ("entry", lang, tag, value) VALUES
-('CHOKOLÁTE', 'gn', 'nyt_count', '0'),
-('HAYHU', 'gn', 'nyt_count', '0'),
-('MOÑE''Ẽ', 'gn', 'nyt_count', '0'),
-('KUATIAÑE''Ẽ', 'gn', 'nyt_count', '0'),
-('JEROKY', 'gn', 'nyt_count', '0'),
-('ARETE', 'gn', 'nyt_count', '0'),
-('KANE''Õ', 'gn', 'nyt_count', '0');
-
--- Insert entry scores
-INSERT INTO entry_score ("entry", lang, familiarity_score, quality_score, source_ai) VALUES
-('CHOKOLÁTE', 'gn', 7, 8, 'gemini2.5'),
-('HAYHU', 'gn', 9, 9, 'gemini2.5'),
-('MOÑE''Ẽ', 'gn', 8, 8, 'gemini2.5'),
-('KUATIAÑE''Ẽ', 'gn', 6, 7, 'gemini2.5'),
-('JEROKY', 'gn', 8, 8, 'gemini2.5'),
-('ARETE', 'gn', 7, 7, 'gemini2.5'),
-('KANE''Õ', 'gn', 5, 6, 'gemini2.5');
 
 -- Insert sense entry translations (from sampleGuaraniClues.json)
 INSERT INTO sense_entry_translation (sense_id, "entry", lang, display_text) VALUES
@@ -277,13 +194,3 @@ INSERT INTO example_sentence_translation (example_id, lang, sentence) VALUES
 ('ex_007_002', 'es', 'Ella está muy cansada después de cocinar.'),
 ('ex_007_002', 'en', 'She is very tired after cooking.'),
 ('ex_007_002', 'gn', 'Ha''e {{ikane''õ}} heta ojapo cenagua rire.');
-
--- Insert sense entry scores
-INSERT INTO sense_entry_score (sense_id, familiarity_score, quality_score, source_ai) VALUES
-('sense_001', 7, 8, 'gemini2.5'),
-('sense_002', 9, 9, 'gemini2.5'),
-('sense_003', 8, 8, 'gemini2.5'),
-('sense_004', 6, 7, 'gemini2.5'),
-('sense_005', 8, 8, 'gemini2.5'),
-('sense_006', 7, 7, 'gemini2.5'),
-('sense_007', 5, 6, 'gemini2.5');

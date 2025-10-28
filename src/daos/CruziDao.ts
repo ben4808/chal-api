@@ -116,12 +116,12 @@ class CruziDao implements ICruziDao {
             isPrivate: raw.is_private,
             createdDate: new Date(raw.created_date),
             modifiedDate: raw.modified_date ? new Date(raw.modified_date) : new Date(raw.created_date),
+            clueCount: raw.clue_count,
             metadata1: raw.metadata1,
             metadata2: raw.metadata2,
             creator: mapCreator(raw.creator),
             progressData: mapCollectionProgressData(raw.user_progress),
             clues: [],
-            clueCount: 0,
         } as ClueCollection));
     }
 

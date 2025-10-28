@@ -187,6 +187,7 @@ BEGIN
                 'created_date', c.created_date,
                 'metadata1', c.metadata1,
                 'metadata2', c.metadata2,
+                'clue_count', c.clue_count,
                 'creator', CASE WHEN u.id IS NOT NULL
                                 THEN jsonb_build_object(
                                     'creator_id', u.id,

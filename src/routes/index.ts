@@ -8,8 +8,14 @@ import { submitUserResponse } from '../handlers/submitUserResponse';
 import { removeClueFromCollection } from '../handlers/removeClueFromCollection';
 import { addCluesToCollection } from '../handlers/addCluesToCollection';
 import { reopenCollection } from '../handlers/reopenCollection';
+import { handleGoogleAuth } from '../handlers/handleGoogleAuth';
+import { verifyAuth } from '../handlers/verifyAuth';
 
 const apiRouter = Router();
+
+// Authentication routes
+apiRouter.post('/auth/google', handleGoogleAuth);
+apiRouter.get('/auth/verify', verifyAuth);
 
 //apiRouter.get('/getCrosswordList', getCrosswordList);
 apiRouter.get('/getCollectionList', authenticateOptional, getCollectionList);
