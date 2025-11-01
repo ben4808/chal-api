@@ -113,6 +113,7 @@ class CruziDao implements ICruziDao {
             title: raw.title,
             author: raw.author,
             description: raw.description,
+            isCrosswordCollection: raw.is_crossword_collection,
             isPrivate: raw.is_private,
             createdDate: new Date(raw.created_date),
             modifiedDate: raw.modified_date ? new Date(raw.modified_date) : new Date(raw.created_date),
@@ -165,29 +166,76 @@ class CruziDao implements ICruziDao {
         }
 
         const rawData = result[0].populate_collection_batch;
-        return rawData.map((raw: any) => ({
-            id: raw.id,
-            entry: raw.entry ? {
-                entry: raw.entry,
-                lang: raw.lang,
-            } as Entry : undefined,
-            sense: raw.sense ? {
-                id: raw.sense.id,
-                partOfSpeech: raw.sense.partOfSpeech,
-                commonness: raw.sense.commonness,
-                summary: raw.sense.summary,
-                definition: raw.sense.definition,
-                exampleSentences: raw.sense.exampleSentences,
-                translations: raw.sense.translations,
-                familiarityScore: raw.sense.familiarityScore,
-                qualityScore: raw.sense.qualityScore,
-                sourceAi: raw.sense.sourceAi,
-            } as Sense : undefined,
-            customClue: raw.custom_clue,
-            customDisplayText: raw.custom_display_text,
-            source: raw.source,
-            progressData: raw.progress_data ? mapClueProgressData(raw.progress_data) : undefined,
-        } as Clue));
+        
+        // Create a map from clue ID to clue data to preserve input order
+        const clueMap = new Map<string, any>();
+        for (const raw of rawData) {
+            clueMap.set(raw.id, raw);
+        }
+
+        // Transform example sentences from [{id, sentence, lang}, ...] format
+        // to [{_id, en, es, gn, ...}, ...] format grouped by id
+        // Supports any language code that exists in the database
+        const transformExampleSentences = (exampleSentences: any[]): any[] => {
+            if (!exampleSentences || !Array.isArray(exampleSentences)) {
+                return [];
+            }
+
+            // Group by id - use index signature to allow any language code
+            const grouped = new Map<string, { _id: string; [lang: string]: string | undefined }>();
+            
+            for (const ex of exampleSentences) {
+                if (!ex.id || !ex.lang || !ex.sentence) continue;
+                
+                if (!grouped.has(ex.id)) {
+                    grouped.set(ex.id, { _id: ex.id });
+                }
+                
+                const example = grouped.get(ex.id)!;
+                const lang = ex.lang;
+                const sentence = ex.sentence;
+                
+                // Dynamically assign the sentence to the language property
+                example[lang] = sentence;
+            }
+            
+            return Array.from(grouped.values());
+        };
+
+        // Return results in the same order as the input array
+        return clueIds.map((clueId: string) => {
+            const raw = clueMap.get(clueId);
+            if (!raw) {
+                // If a clue ID was not found, return a minimal clue object
+                return {
+                    id: clueId,
+                } as Clue;
+            }
+
+            return {
+                id: raw.id,
+                entry: raw.entry ? {
+                    entry: raw.entry,
+                    lang: raw.lang,
+                    displayText: raw.display_text,
+                } as Entry : undefined,
+                sense: raw.sense ? {
+                    id: raw.sense.id,
+                    partOfSpeech: raw.sense.partOfSpeech,
+                    commonness: raw.sense.commonness,
+                    summary: raw.sense.summary,
+                    definition: raw.sense.definition,
+                    exampleSentences: transformExampleSentences(raw.sense.exampleSentences),
+                    familiarityScore: raw.sense.familiarityScore,
+                    qualityScore: raw.sense.qualityScore,
+                    sourceAi: raw.sense.sourceAi,
+                } as Sense : undefined,
+                customClue: raw.custom_clue,
+                customDisplayText: raw.custom_display_text,
+                source: raw.source,
+                progressData: raw.progress_data ? mapClueProgressData(raw.progress_data) : undefined,
+            } as Clue;
+        });
     }
 
     // Maps get_clues result to Clue[]

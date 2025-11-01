@@ -397,6 +397,7 @@ BEGIN
             uc.incorrect_solves,
             uc.last_solve,
             uc.correct_solves_needed,
+            e.display_text,
             -- Get sense translations directly
             COALESCE(
                 (SELECT jsonb_agg(DISTINCT
@@ -425,15 +426,10 @@ BEGIN
                 '[]'::jsonb
             ) as example_sentences
         FROM clue c
+        LEFT JOIN entry e ON c.entry = e.entry AND c.lang = e.lang
         LEFT JOIN sense s ON c.sense_id = s.id
         LEFT JOIN user__clue uc ON c.id = uc.clue_id AND uc.user_id = p_user_id
         WHERE c.id = ANY(SELECT jsonb_array_elements_text(p_clue_ids)::text)
-    ),
-    clue_order AS (
-        SELECT 
-            jsonb_array_elements_text(p_clue_ids)::text AS clue_id, 
-            ordinality AS order_index
-        FROM jsonb_array_elements(p_clue_ids) WITH ORDINALITY
     )
     SELECT jsonb_agg(
         jsonb_build_object(
@@ -461,7 +457,6 @@ BEGIN
                             WHERE definition IS NOT NULL
                         ),
                         'exampleSentences', cd.example_sentences,
-                        'translations', cd.sense_translations,
                         'familiarityScore', cd.familiarity_score,
                         'qualityScore', cd.quality_score,
                         'sourceAi', cd.source_ai
@@ -478,11 +473,10 @@ BEGIN
                     )
                 ELSE NULL
             END
-        ) ORDER BY co.order_index
+        )
     )
     INTO result_json
-    FROM clue_data cd
-    LEFT JOIN clue_order co ON cd.id = co.clue_id;
+    FROM clue_data cd;
 
     RETURN COALESCE(result_json, '[]'::jsonb);
 END;
