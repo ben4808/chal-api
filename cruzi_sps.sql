@@ -267,12 +267,16 @@ DECLARE
 BEGIN
     -- If no user is provided, return randomized clue IDs from all clues in the collection
     IF p_user_id IS NULL THEN
-        SELECT jsonb_agg(c.id ORDER BY random())
+        SELECT jsonb_agg(c.id)
         INTO result_json
-        FROM clue c
-        INNER JOIN collection__clue cc ON c.id = cc.clue_id
-        WHERE cc.collection_id = p_collection_id
-        LIMIT batch_size;
+        FROM (
+            SELECT c.id
+            FROM clue c
+            INNER JOIN collection__clue cc ON c.id = cc.clue_id
+            WHERE cc.collection_id = p_collection_id
+            ORDER BY random()
+            LIMIT batch_size
+        ) c;
         
         RETURN COALESCE(result_json, '[]'::jsonb);
     END IF;
