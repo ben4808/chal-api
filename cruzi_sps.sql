@@ -402,6 +402,7 @@ BEGIN
             uc.last_solve,
             uc.correct_solves_needed,
             e.display_text,
+            e.loading_status,
             -- Get sense translations directly
             COALESCE(
                 (SELECT jsonb_agg(DISTINCT
@@ -440,6 +441,8 @@ BEGIN
             'id', cd.id,
             'entry', cd.entry,
             'lang', cd.lang,
+            'display_text', cd.display_text,
+            'loading_status', cd.loading_status,
             'sense_id', cd.sense_id,
             'custom_clue', cd.custom_clue,
             'custom_display_text', cd.custom_display_text,
@@ -501,6 +504,7 @@ BEGIN
                 'id', c.id,
                 'entry', c.entry,
                 'lang', c.lang,
+                'loading_status', e.loading_status,
                 'clue', c.clue,
                 'source', c.source,
                 'collection_order', cc.order,
@@ -525,11 +529,134 @@ BEGIN
     JOIN
         clue c ON cc.clue_id = c.id
     LEFT JOIN
+        entry e ON c.entry = e.entry AND c.lang = e.lang
+    LEFT JOIN
         user__clue uc ON c.id = uc.clue_id AND uc.user_id = p_user_id
     WHERE
         cc.collection_id = p_collection_id;
 END;
 $$;
+
+CREATE OR REPLACE FUNCTION get_collection_clues(
+    p_collection_id text,
+    p_user_id text DEFAULT NULL,
+    p_sort_by text DEFAULT 'Answer',
+    p_sort_direction text DEFAULT 'asc',
+    p_progress_filter text DEFAULT NULL,
+    p_status_filter text DEFAULT NULL,
+    p_page int DEFAULT 1
+)
+RETURNS jsonb AS $$
+DECLARE
+    result_json jsonb;
+    page_size int := 100;
+    offset_val int;
+BEGIN
+    offset_val := (p_page - 1) * page_size;
+
+    WITH clue_data AS (
+        SELECT 
+            c.id,
+            c.entry,
+            c.lang,
+            c.custom_clue,
+            c.custom_display_text,
+            c.sense_id,
+            -- Answer: custom_display_text if exists, otherwise display_text from entry
+            COALESCE(c.custom_display_text, e.display_text, '') AS answer,
+            -- Sense: summary from sense_translation (entry's lang, or English, or N/A)
+            COALESCE(
+                (SELECT st.summary 
+                 FROM sense_translation st 
+                 WHERE st.sense_id = c.sense_id 
+                 AND st.lang = c.lang
+                 LIMIT 1),
+                (SELECT st.summary 
+                 FROM sense_translation st 
+                 WHERE st.sense_id = c.sense_id 
+                 AND st.lang = 'en'
+                 LIMIT 1),
+                'N/A'
+            ) AS sense,
+            -- Clue: custom_clue or N/A
+            COALESCE(c.custom_clue, 'N/A') AS clue,
+            -- Progress status and sorting helpers
+            CASE 
+                WHEN p_user_id IS NULL OR uc.user_id IS NULL THEN 'Unseen'
+                WHEN COALESCE(uc.correct_solves, 0) >= COALESCE(uc.correct_solves_needed, 2) THEN 'Mastered'
+                ELSE 'In Progress'
+            END AS progress_status,
+            -- Progress display text
+            CASE 
+                WHEN p_user_id IS NULL OR uc.user_id IS NULL THEN 'Unseen'
+                WHEN COALESCE(uc.correct_solves, 0) >= COALESCE(uc.correct_solves_needed, 2) THEN 'Mastered'
+                ELSE COALESCE(uc.correct_solves, 0)::text || '/' || COALESCE(uc.correct_solves_needed, 2)::text
+            END AS progress_display,
+            -- Progress sort helper: 1 for Mastered, 2 for In Progress, 3 for Unseen
+            CASE 
+                WHEN p_user_id IS NULL OR uc.user_id IS NULL THEN 3
+                WHEN COALESCE(uc.correct_solves, 0) >= COALESCE(uc.correct_solves_needed, 2) THEN 1
+                ELSE 2
+            END AS progress_sort_order,
+            -- Progress solves needed for sorting In Progress clues
+            COALESCE(uc.correct_solves_needed, 2) AS solves_needed,
+            -- Status: loading_status from entry or 'Ready'
+            COALESCE(e.loading_status, 'Ready') AS status
+        FROM collection__clue cc
+        JOIN clue c ON cc.clue_id = c.id
+        LEFT JOIN entry e ON c.entry = e.entry AND c.lang = e.lang
+        LEFT JOIN user__clue uc ON c.id = uc.clue_id AND uc.user_id = p_user_id
+        WHERE cc.collection_id = p_collection_id
+        -- Apply progress filter
+        AND (
+            p_progress_filter IS NULL OR
+            (p_progress_filter = 'Unseen' AND (p_user_id IS NULL OR uc.user_id IS NULL)) OR
+            (p_progress_filter = 'Mastered' AND p_user_id IS NOT NULL AND uc.user_id IS NOT NULL 
+             AND COALESCE(uc.correct_solves, 0) >= COALESCE(uc.correct_solves_needed, 2)) OR
+            (p_progress_filter = 'In Progress' AND p_user_id IS NOT NULL AND uc.user_id IS NOT NULL 
+             AND COALESCE(uc.correct_solves, 0) < COALESCE(uc.correct_solves_needed, 2))
+        )
+        -- Apply status filter
+        AND (
+            p_status_filter IS NULL OR
+            COALESCE(e.loading_status, 'Ready') = p_status_filter
+        )
+    ),
+    sorted_data AS (
+        SELECT *
+        FROM clue_data
+        ORDER BY
+            -- When sorting by Answer
+            CASE WHEN p_sort_by = 'Answer' AND p_sort_direction = 'asc' THEN answer END ASC,
+            CASE WHEN p_sort_by = 'Answer' AND p_sort_direction = 'desc' THEN answer END DESC,
+            -- When sorting by Progress, use the special ordering
+            CASE WHEN p_sort_by = 'Progress' THEN progress_sort_order END,
+            CASE WHEN p_sort_by = 'Progress' AND progress_sort_order = 1 THEN answer END ASC, -- Mastered: alphabetical
+            CASE WHEN p_sort_by = 'Progress' AND progress_sort_order = 2 THEN solves_needed END DESC, -- In Progress: solves needed desc
+            CASE WHEN p_sort_by = 'Progress' AND progress_sort_order = 3 THEN answer END ASC -- Unseen: alphabetical
+    ),
+    paginated_data AS (
+        SELECT *
+        FROM sorted_data
+        LIMIT page_size
+        OFFSET offset_val
+    )
+    SELECT jsonb_agg(
+        jsonb_build_object(
+            'id', id,
+            'answer', answer,
+            'sense', sense,
+            'clue', clue,
+            'progress', progress_display,
+            'status', status
+        )
+    )
+    INTO result_json
+    FROM paginated_data;
+
+    RETURN COALESCE(result_json, '[]'::jsonb);
+END;
+$$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION get_single_clue(
     p_clue_id text
@@ -540,10 +667,11 @@ DECLARE
     clue_record jsonb;
 BEGIN
     -- Select the entire row from the clue table where the id matches the input parameter.
-    -- The to_jsonb() function is used to convert the entire row into a JSONB object.
-    SELECT to_jsonb(c)
+    -- Include loading_status from the entry table.
+    SELECT to_jsonb(c) || jsonb_build_object('loading_status', e.loading_status)
     INTO clue_record
     FROM clue AS c
+    LEFT JOIN entry e ON c.entry = e.entry AND c.lang = e.lang
     WHERE c.id = p_clue_id;
 
     -- Return the JSONB object containing the clue's data.
@@ -606,6 +734,7 @@ BEGIN
                 'entry_type', e.entry_type,
                 'familiarity_score', e.familiarity_score,
                 'quality_score', e.quality_score,
+                'loading_status', e.loading_status,
                 'senses', jsonb_agg(
                     jsonb_build_object(
                         'id', es.id,
@@ -641,7 +770,7 @@ BEGIN
         WHERE
             e.entry = p_entry
         GROUP BY
-            e.entry, e.lang, e.length, e.display_text, e.entry_type, e.familiarity_score, e.quality_score
+            e.entry, e.lang, e.length, e.display_text, e.entry_type, e.familiarity_score, e.quality_score, e.loading_status
     );
 END;
 $$ LANGUAGE plpgsql;
@@ -680,7 +809,8 @@ RETURNS TABLE(
   display_text text, 
   entry_type text, 
   familiarity_score int, 
-  quality_score int
+  quality_score int,
+  loading_status text
 )
 LANGUAGE plpgsql AS $$
 DECLARE
@@ -715,7 +845,8 @@ BEGIN
         e.display_text,
         e.entry_type,
         e.familiarity_score,
-        e.quality_score
+        e.quality_score,
+        e.loading_status
     FROM
         "entry" e
     WHERE

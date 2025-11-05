@@ -3,6 +3,7 @@ import { OAuth2Client } from 'google-auth-library';
 import { StatusCodes } from 'http-status-codes';
 import { generateJWT } from '../lib/jwt';
 import { User } from '../models/User';
+import CruziDao from '../daos/CruziDao';
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || 'your-google-client-id';
 const client = new OAuth2Client(GOOGLE_CLIENT_ID);
@@ -56,6 +57,16 @@ export async function handleGoogleAuth(req: Request, res: Response) {
       email: payload.email,
       nativeLang: 'en', // Default to English, can be updated later
     };
+
+    // Insert user into database if they don't already exist
+    const dao = new CruziDao();
+    await dao.insertUserIfNotExists({
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      nativeLang: user.nativeLang,
+    });
 
     // Generate JWT token
     const jwtToken = generateJWT(user);

@@ -5,6 +5,7 @@ import { Entry } from "../models/Entry";
 import { EntryQueryParams } from "../models/EntryQueryParams";
 import { Sense } from "../models/Sense";
 import { UserResponse } from "../models/UserResponse";
+import { CollectionClueRow } from "../models/CollectionClueRow";
 import { ICruziDao } from "./ICruziDao";
 import { sqlQuery } from "./postgres";
 
@@ -218,6 +219,7 @@ class CruziDao implements ICruziDao {
                     entry: raw.entry,
                     lang: raw.lang,
                     displayText: raw.display_text,
+                    loadingStatus: raw.loading_status,
                 } as Entry : undefined,
                 sense: raw.sense ? {
                     id: raw.sense.id,
@@ -256,6 +258,7 @@ class CruziDao implements ICruziDao {
             entry: {
                 entry: raw.entry,
                 lang: raw.lang,
+                loadingStatus: raw.loading_status,
             } as Entry,
             lang: raw.lang,
             source: raw.source,
@@ -263,6 +266,41 @@ class CruziDao implements ICruziDao {
             metadata2: raw.metadata2,
             progressData: mapClueProgressData(raw.user_progress),
         } as Clue));
+    }
+
+    // Maps get_collection_clues result to CollectionClueRow[]
+    public async getCollectionClues(
+        collectionId: string,
+        userId?: string,
+        sortBy?: string,
+        sortDirection?: string,
+        progressFilter?: string,
+        statusFilter?: string,
+        page?: number
+    ): Promise<CollectionClueRow[]> {
+        const result = await sqlQuery(true, 'get_collection_clues', [
+            { name: 'p_collection_id', value: collectionId },
+            { name: 'p_user_id', value: userId || null },
+            { name: 'p_sort_by', value: sortBy || 'Answer' },
+            { name: 'p_sort_direction', value: sortDirection || 'asc' },
+            { name: 'p_progress_filter', value: progressFilter || null },
+            { name: 'p_status_filter', value: statusFilter || null },
+            { name: 'p_page', value: page || 1 }
+        ]);
+
+        if (!result || result.length === 0 || !result[0].get_collection_clues) {
+            return [];
+        }
+
+        const rawData = result[0].get_collection_clues;
+        return rawData.map((raw: any) => ({
+            id: raw.id,
+            answer: raw.answer,
+            sense: raw.sense,
+            clue: raw.clue,
+            progress: raw.progress,
+            status: raw.status,
+        } as CollectionClueRow));
     }
 
     // Calls submit_user_response
@@ -298,6 +336,7 @@ class CruziDao implements ICruziDao {
             entry: {
                 entry: raw.entry,
                 lang: raw.lang,
+                loadingStatus: raw.loading_status,
             } as Entry,
             lang: raw.lang,
             source: raw.source,
@@ -329,6 +368,7 @@ class CruziDao implements ICruziDao {
             entry: {
                 entry: raw.entry,
                 lang: raw.lang,
+                loadingStatus: raw.loading_status,
             } as Entry,
             lang: raw.lang,
             source: raw.source,
@@ -354,6 +394,7 @@ class CruziDao implements ICruziDao {
             entryType: raw.entry_type,
             obscurityScore: raw.obscurity_score,
             qualityScore: raw.quality_score,
+            loadingStatus: raw.loading_status,
             senses: raw.senses ? raw.senses.map((sense: any) => ({
                 id: sense.id,
                 summary: sense.summary,
@@ -406,7 +447,25 @@ class CruziDao implements ICruziDao {
             entryType: raw.entry_type,
             obscurityScore: raw.familiarity_score,
             qualityScore: raw.quality_score,
+            loadingStatus: raw.loading_status,
         } as Entry));
+    }
+
+    // Inserts a user if they don't already exist (based on id)
+    public async insertUserIfNotExists(user: { id: string; email: string; firstName?: string; lastName?: string; nativeLang?: string }): Promise<void> {
+        const query = `
+            INSERT INTO "user" (id, email, first_name, last_name, native_lang, created_at)
+            VALUES ($1, $2, $3, $4, $5, NOW())
+            ON CONFLICT (id) DO NOTHING
+        `;
+
+        await sqlQuery(false, query, [
+            { name: 'id', value: user.id },
+            { name: 'email', value: user.email },
+            { name: 'first_name', value: user.firstName || null },
+            { name: 'last_name', value: user.lastName || null },
+            { name: 'native_lang', value: user.nativeLang || null }
+        ]);
     }
 }
 
