@@ -41,4 +41,6 @@ export interface ICruziDao {
   queryEntries(params: EntryQueryParams): Promise<Entry[]>;
 
   insertUserIfNotExists(user: User): Promise<void>;
+  
+  initializeUserCollectionProgress(userId: string, collectionId: string): Promise<void>;
 }

@@ -4,7 +4,6 @@ import { ClueCollection } from "../models/ClueCollection";
 import { Entry } from "../models/Entry";
 import { EntryQueryParams } from "../models/EntryQueryParams";
 import { Sense } from "../models/Sense";
-import { UserResponse } from "../models/UserResponse";
 import { CollectionClueRow } from "../models/CollectionClueRow";
 import { ICruziDao } from "./ICruziDao";
 import { sqlQuery } from "./postgres";
@@ -122,7 +121,7 @@ class CruziDao implements ICruziDao {
             metadata1: raw.metadata1,
             metadata2: raw.metadata2,
             creator: mapCreator(raw.creator),
-            progressData: mapCollectionProgressData(raw.user_progress),
+            progressData: mapCollectionProgressData(raw.user_progress, userId, raw.id),
             clues: [],
         } as ClueCollection));
     }
@@ -304,7 +303,7 @@ class CruziDao implements ICruziDao {
     }
 
     // Calls submit_user_response
-    public async submitUserResponse(userId: string, response: UserResponse): Promise<void> {
+    public async submitUserResponse(userId: string, response: any): Promise<void> {
         await sqlQuery(true, 'submit_user_response', [
             { name: 'p_user_id', value: userId },
             { name: 'p_response', value: response }
@@ -453,18 +452,21 @@ class CruziDao implements ICruziDao {
 
     // Inserts a user if they don't already exist (based on id)
     public async insertUserIfNotExists(user: { id: string; email: string; firstName?: string; lastName?: string; nativeLang?: string }): Promise<void> {
-        const query = `
-            INSERT INTO "user" (id, email, first_name, last_name, native_lang, created_at)
-            VALUES ($1, $2, $3, $4, $5, NOW())
-            ON CONFLICT (id) DO NOTHING
-        `;
+        await sqlQuery(true, 'insert_user_if_not_exists', [
+            { name: 'p_id', value: user.id },
+            { name: 'p_email', value: user.email },
+            { name: 'p_first_name', value: user.firstName || null },
+            { name: 'p_last_name', value: user.lastName || null },
+            { name: 'p_native_lang', value: user.nativeLang || null }
+        ]);
+    }
 
-        await sqlQuery(false, query, [
-            { name: 'id', value: user.id },
-            { name: 'email', value: user.email },
-            { name: 'first_name', value: user.firstName || null },
-            { name: 'last_name', value: user.lastName || null },
-            { name: 'native_lang', value: user.nativeLang || null }
+    // Initializes user collection progress if it doesn't exist
+    // Creates a record with all clues marked as unseen
+    public async initializeUserCollectionProgress(userId: string, collectionId: string): Promise<void> {
+        await sqlQuery(true, 'initialize_user_collection_progress', [
+            { name: 'p_user_id', value: userId },
+            { name: 'p_collection_id', value: collectionId }
         ]);
     }
 }
@@ -481,11 +483,13 @@ const mapCreator = (creator: any) => {
 };
 
 // Helper function to map 'progressData' for ClueCollection from the raw user_progress object
-const mapCollectionProgressData = (progress: any) => {
+const mapCollectionProgressData = (progress: any, userId?: string, collectionId?: string) => {
     if (!progress) return undefined;
     return {
+        userId: userId || '',
+        collectionId: collectionId || '',
         unseen: progress.unseen,
-        inProgress: progress.in_progress,
+        in_progress: progress.in_progress,
         completed: progress.completed,
     };
 };

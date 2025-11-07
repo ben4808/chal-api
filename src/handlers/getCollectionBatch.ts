@@ -22,6 +22,10 @@ selected are as follows:
 - The batch, once selected, should be randomized before being returned.
 - If no user is provided, the batch should be a random selection from all clues in the collection.
 
+As a side effect, this call will check for progress data in the user__collection table
+if a user is provided. If the progress data is not found, a record will be created will all clues
+unseen.
+
 It should accept a request with the following parameters:
 - An optional user from the auth middleware.
 - `id`: The ID of the clue collection from which to retrieve the batch.
@@ -34,6 +38,11 @@ export async function getCollectionBatch(req: Request, res: Response) {
     try {
         const userId = (req as any).userId as string | undefined;
         const collectionId = req.query.collection_id as string;
+        
+        // Side effect: Initialize user collection progress if user is provided and progress doesn't exist
+        if (userId) {
+            await dao.initializeUserCollectionProgress(userId, collectionId);
+        }
         
         // Step 1: Select clue IDs for the batch
         const clueIds = await dao.selectCollectionBatch(userId, collectionId);
