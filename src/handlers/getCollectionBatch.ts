@@ -17,8 +17,8 @@ selected are as follows:
     unless every clue has been seen in the past 24 hours. If there are fewer than 20 clues that have
     not been seen in the past 24 hours then the batch will have less than 20 clues.
 - The clues selected should be those with the earliest last solve date.
-- Clues that have been "mastered" (correct solves equals correct solves needed) should not be seen
-    again unless every clue has been mastered.
+- Clues that have been "completed" (correct solves equals correct solves needed) should not be seen
+    again unless every clue has been completed.
 - The batch, once selected, should be randomized before being returned.
 - If no user is provided, the batch should be a random selection from all clues in the collection.
 

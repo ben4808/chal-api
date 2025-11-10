@@ -5,9 +5,9 @@ import CruziDao from "../daos/CruziDao";
 let dao = new CruziDao();
 
 /*
-Write an Express handler reopenCollection that reopens a collection of mastered clues.
+Write an Express handler reopenCollection that reopens a collection of completed clues.
 
-The effect will be to increment the correctResponsesNeeded field by 1 on each mastered clue
+The effect will be to increment the correctResponsesNeeded field by 1 on each completed clue
     in the collection.
 
 It should accept a request with the following parameters:

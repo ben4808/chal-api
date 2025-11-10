@@ -11,7 +11,7 @@ This call will update the progress data for the givern user and clue.
 
 A correct response will increment the correct solves for the clue, 
     and a incorrect response will increment the incorrect solves for the clue.
-    If the clue is already mastered, the correct solves will not be incremented.
+    If the clue is already completed, the correct solves will not be incremented.
 Either way, the last solve date will be updated to the current date.
 If the user response is incorrect, 2 will be added to the correct solves needed for the clue.
 If no progress data is found for the clue, a record will be created with 2 correct solves needed
@@ -21,7 +21,7 @@ As a side effect, this call will update the progress data in user__collection. I
 does not exist, ignore this step.
 - If this was the user's first submission for the clue, it will be deducted from unseen and
     added to in_progress.
-- If in this submission the user has now mastered the clue, it will be deducted from in_progress
+- If in this submission the user has now completed the clue, it will be deducted from in_progress
     and added to completed.
 
 It should accept a request with the following parameters:

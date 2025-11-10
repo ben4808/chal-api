@@ -12,9 +12,9 @@ Columns to be returned:
 - Clue : The custom_clue of the clue. "N/A" if no custom_clue is set.
 - Progress : Based on the progress of the user one of these:
    - "Unseen" if there is no progress data for the clue, or there is no logged in user.
-   - "Mastered" if the correct solves >= the solves needed.
+   - "Completed" if the correct solves >= the solves needed.
    - "In Progress" otherwise, return the number of correct solves and the solves needed.
-   - This column is sortable. In sorting, Mastered clues come first (sorted alphabetically),
+   - This column is sortable. In sorting, Completed clues come first (sorted alphabetically),
       followed by In Progress clues (sorted by the number of solves needed descending), followed
 	  by "Unseen" clues (sorted alphabetically).
    - This column is filterable by the 3 major categories.

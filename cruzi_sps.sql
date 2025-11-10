@@ -263,7 +263,7 @@ DECLARE
     total_seen INTEGER;
     clues_seen_24h INTEGER;
     total_clues INTEGER;
-    all_mastered BOOLEAN := FALSE;
+    all_completed BOOLEAN := FALSE;
 BEGIN
     -- If no user is provided, return randomized clue IDs from all clues in the collection
     IF p_user_id IS NULL THEN
@@ -281,8 +281,8 @@ BEGIN
         RETURN COALESCE(result_json, '[]'::jsonb);
     END IF;
 
-    -- Check if all clues are mastered
-    SELECT COUNT(*) = 0 INTO all_mastered
+    -- Check if all clues are completed
+    SELECT COUNT(*) = 0 INTO all_completed
     FROM clue c
     INNER JOIN collection__clue cc ON c.id = cc.clue_id
     LEFT JOIN user__clue uc ON c.id = uc.clue_id AND uc.user_id = p_user_id
@@ -309,7 +309,7 @@ BEGIN
         RETURN '[]'::jsonb;
     END IF;
 
-    -- Get unseen clue IDs (clues user has never seen or not mastered)
+    -- Get unseen clue IDs (clues user has never seen or not completed)
     SELECT jsonb_agg(c.id ORDER BY COALESCE(uc.last_solve, '1900-01-01'::date) ASC)
     INTO unseen_clue_ids
     FROM clue c
@@ -317,9 +317,9 @@ BEGIN
     LEFT JOIN user__clue uc ON c.id = uc.clue_id AND uc.user_id = p_user_id
     WHERE cc.collection_id = p_collection_id
     AND (uc.user_id IS NULL OR uc.last_solve IS NULL OR (uc.correct_solves IS NULL OR uc.correct_solves < uc.correct_solves_needed))
-    AND (all_mastered OR uc.correct_solves IS NULL OR uc.correct_solves < uc.correct_solves_needed);
+    AND (all_completed OR uc.correct_solves IS NULL OR uc.correct_solves < uc.correct_solves_needed);
 
-    -- Get seen clue IDs (clues user has seen but not mastered, not seen in past 24 hours)
+    -- Get seen clue IDs (clues user has seen but not completed, not seen in past 24 hours)
     SELECT jsonb_agg(c.id ORDER BY COALESCE(uc.last_solve, '1900-01-01'::date) ASC)
     INTO seen_clue_ids
     FROM clue c
@@ -329,7 +329,7 @@ BEGIN
     AND uc.user_id = p_user_id
     AND uc.last_solve IS NOT NULL
     AND uc.last_solve < NOW() - INTERVAL '24 hours'
-    AND (all_mastered OR uc.correct_solves IS NULL OR uc.correct_solves < uc.correct_solves_needed);
+    AND (all_completed OR uc.correct_solves IS NULL OR uc.correct_solves < uc.correct_solves_needed);
 
     -- Count available clues
     SELECT 
@@ -583,16 +583,16 @@ BEGIN
             -- Progress status and sorting helpers
             CASE 
                 WHEN p_user_id IS NULL OR uc.user_id IS NULL THEN 'Unseen'
-                WHEN COALESCE(uc.correct_solves, 0) >= COALESCE(uc.correct_solves_needed, 2) THEN 'Mastered'
+                WHEN COALESCE(uc.correct_solves, 0) >= COALESCE(uc.correct_solves_needed, 2) THEN 'Completed'
                 ELSE 'In Progress'
             END AS progress_status,
             -- Progress display text
             CASE 
                 WHEN p_user_id IS NULL OR uc.user_id IS NULL THEN 'Unseen'
-                WHEN COALESCE(uc.correct_solves, 0) >= COALESCE(uc.correct_solves_needed, 2) THEN 'Mastered'
+                WHEN COALESCE(uc.correct_solves, 0) >= COALESCE(uc.correct_solves_needed, 2) THEN 'Completed'
                 ELSE COALESCE(uc.correct_solves, 0)::text || '/' || COALESCE(uc.correct_solves_needed, 2)::text
             END AS progress_display,
-            -- Progress sort helper: 1 for Mastered, 2 for In Progress, 3 for Unseen
+            -- Progress sort helper: 1 for Completed, 2 for In Progress, 3 for Unseen
             CASE 
                 WHEN p_user_id IS NULL OR uc.user_id IS NULL THEN 3
                 WHEN COALESCE(uc.correct_solves, 0) >= COALESCE(uc.correct_solves_needed, 2) THEN 1
@@ -611,7 +611,7 @@ BEGIN
         AND (
             p_progress_filter IS NULL OR
             (p_progress_filter = 'Unseen' AND (p_user_id IS NULL OR uc.user_id IS NULL)) OR
-            (p_progress_filter = 'Mastered' AND p_user_id IS NOT NULL AND uc.user_id IS NOT NULL 
+            (p_progress_filter = 'Completed' AND p_user_id IS NOT NULL AND uc.user_id IS NOT NULL 
              AND COALESCE(uc.correct_solves, 0) >= COALESCE(uc.correct_solves_needed, 2)) OR
             (p_progress_filter = 'In Progress' AND p_user_id IS NOT NULL AND uc.user_id IS NOT NULL 
              AND COALESCE(uc.correct_solves, 0) < COALESCE(uc.correct_solves_needed, 2))
@@ -631,7 +631,7 @@ BEGIN
             CASE WHEN p_sort_by = 'Answer' AND p_sort_direction = 'desc' THEN answer END DESC,
             -- When sorting by Progress, use the special ordering
             CASE WHEN p_sort_by = 'Progress' THEN progress_sort_order END,
-            CASE WHEN p_sort_by = 'Progress' AND progress_sort_order = 1 THEN answer END ASC, -- Mastered: alphabetical
+            CASE WHEN p_sort_by = 'Progress' AND progress_sort_order = 1 THEN answer END ASC, -- Completed: alphabetical
             CASE WHEN p_sort_by = 'Progress' AND progress_sort_order = 2 THEN solves_needed END DESC, -- In Progress: solves needed desc
             CASE WHEN p_sort_by = 'Progress' AND progress_sort_order = 3 THEN answer END ASC -- Unseen: alphabetical
     ),
@@ -887,8 +887,8 @@ DECLARE
     _current_incorrect_solves integer;
     _current_total_solves integer;
     _correct_solves_needed integer;
-    _is_mastered boolean;
-    _was_mastered_before boolean;
+    _is_completed boolean;
+    _was_completed_before boolean;
     _default_solves_needed integer;
     _is_first_submission boolean;
     _new_correct_solves integer;
@@ -912,7 +912,7 @@ BEGIN
         _current_incorrect_solves,
         _current_total_solves,
         _correct_solves_needed,
-        _was_mastered_before
+        _was_completed_before
     FROM user__clue uc
     WHERE uc.user_id = p_user_id AND uc.clue_id = _clue_id;
     
@@ -945,12 +945,12 @@ BEGIN
         _current_incorrect_solves := 0;
         _current_total_solves := 0;
         _correct_solves_needed := _new_correct_solves_needed;
-        _was_mastered_before := false;
+        _was_completed_before := false;
     ELSE
         -- Update the progress based on the response
         IF _is_correct THEN
-            -- Correct response: increment correct solves (only if not already mastered)
-            IF NOT _was_mastered_before THEN
+            -- Correct response: increment correct solves (only if not already completed)
+            IF NOT _was_completed_before THEN
                 _new_correct_solves := _current_correct_solves + 1;
                 _new_correct_solves_needed := _correct_solves_needed;
                 
@@ -960,7 +960,7 @@ BEGIN
                     last_solve = CURRENT_DATE
                 WHERE user_id = p_user_id AND clue_id = _clue_id;
             ELSE
-                -- Already mastered, only update last solve date
+                -- Already completed, only update last solve date
                 UPDATE user__clue 
                 SET last_solve = CURRENT_DATE
                 WHERE user_id = p_user_id AND clue_id = _clue_id;
@@ -982,8 +982,8 @@ BEGIN
         END IF;
     END IF;
     
-    -- Check if clue is now mastered after this submission
-    _is_mastered := _new_correct_solves >= _new_correct_solves_needed;
+    -- Check if clue is now completed after this submission
+    _is_completed := _new_correct_solves >= _new_correct_solves_needed;
     
     -- Update user__collection progress as a side effect (if collection_id is provided and record exists)
     IF _collection_id IS NOT NULL THEN
@@ -998,8 +998,8 @@ BEGIN
                 WHERE user_id = p_user_id AND collection_id = _collection_id;
             END IF;
             
-            -- If clue is now mastered, move from in_progress to completed
-            IF _is_mastered AND NOT _was_mastered_before THEN
+            -- If clue is now completed, move from in_progress to completed
+            IF _is_completed AND NOT _was_completed_before THEN
                 UPDATE user__collection
                 SET 
                     in_progress = GREATEST(0, in_progress - 1),
@@ -1011,7 +1011,7 @@ BEGIN
 END;
 $$;
 
--- Function to reopen a collection by incrementing correctResponsesNeeded for mastered clues
+-- Function to reopen a collection by incrementing correctResponsesNeeded for completed clues
 CREATE OR REPLACE FUNCTION reopen_collection(
     p_user_id text,
     p_collection_id text
@@ -1020,8 +1020,8 @@ RETURNS void
 LANGUAGE plpgsql
 AS $$
 BEGIN
-    -- Increment correct_solves_needed by 1 for all mastered clues in the collection
-    -- A clue is considered mastered when correct_solves >= correct_solves_needed
+    -- Increment correct_solves_needed by 1 for all completed clues in the collection
+    -- A clue is considered completed when correct_solves >= correct_solves_needed
     UPDATE user__clue 
     SET correct_solves_needed = correct_solves_needed + 1
     WHERE user_id = p_user_id 
