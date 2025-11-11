@@ -498,7 +498,7 @@ const mapCollectionProgressData = (progress: any, userId?: string, collectionId?
 const mapClueProgressData = (progress: any) => {
     if (!progress) return undefined;
     return {
-        totalSolves: progress.total_solves,
+        correctSolvesNeeded: progress.correct_solves_needed,
         correctSolves: progress.correct_solves,
         incorrectSolves: progress.incorrect_solves,
         lastSolve: progress.last_solve ? new Date(progress.last_solve) : undefined,

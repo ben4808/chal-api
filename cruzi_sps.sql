@@ -246,124 +246,159 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Function to select clue IDs for a collection batch based on user progress
+-- Function to select a batch of clue IDs for a collection based on user progress
 CREATE OR REPLACE FUNCTION select_collection_batch(
     p_collection_id TEXT,
     p_user_id TEXT DEFAULT NULL
 )
-RETURNS JSONB AS $$
+RETURNS TEXT[] AS $$
 DECLARE
-    result_json JSONB;
-    unseen_clue_ids JSONB;
-    seen_clue_ids JSONB;
-    batch_size INTEGER := 20;
-    unseen_count INTEGER := 13;
-    seen_count INTEGER := 7;
-    total_unseen INTEGER;
-    total_seen INTEGER;
-    clues_seen_24h INTEGER;
-    total_clues INTEGER;
-    all_completed BOOLEAN := FALSE;
+    v_clue_ids TEXT[];
+    v_eligible_clues RECORD;
+    v_unseen_clues TEXT[];
+    v_seen_clues TEXT[];
+    v_target_unseen INT := 13;
+    v_target_seen INT := 7;
+    v_batch_size INT := 20;
 BEGIN
-    -- If no user is provided, return randomized clue IDs from all clues in the collection
+    -- Initialize user collection progress if user is provided and progress doesn't exist
+    IF p_user_id IS NOT NULL THEN
+        PERFORM initialize_user_collection_progress(p_user_id, p_collection_id);
+    END IF;
+
+    -- If no user provided, return random batch of 20 clues
     IF p_user_id IS NULL THEN
-        SELECT jsonb_agg(c.id)
-        INTO result_json
+        SELECT array_agg(clue_id ORDER BY random())
+        INTO v_clue_ids
         FROM (
-            SELECT c.id
-            FROM clue c
-            INNER JOIN collection__clue cc ON c.id = cc.clue_id
-            WHERE cc.collection_id = p_collection_id
+            SELECT clue_id
+            FROM collection__clue
+            WHERE collection_id = p_collection_id
             ORDER BY random()
-            LIMIT batch_size
-        ) c;
-        
-        RETURN COALESCE(result_json, '[]'::jsonb);
+            LIMIT v_batch_size
+        ) sub;
+
+        RETURN COALESCE(v_clue_ids, '{}');
     END IF;
 
-    -- Check if all clues are completed
-    SELECT COUNT(*) = 0 INTO all_completed
-    FROM clue c
-    INNER JOIN collection__clue cc ON c.id = cc.clue_id
-    LEFT JOIN user__clue uc ON c.id = uc.clue_id AND uc.user_id = p_user_id
+    -- Get eligible clues (not completed and not seen in last 24 hours)
+    CREATE TEMP TABLE eligible_clues ON COMMIT DROP AS
+    SELECT
+        cc.clue_id,
+        CASE
+            WHEN uc.correct_solves >= uc.correct_solves_needed THEN 'completed'
+            WHEN uc.last_solve >= CURRENT_DATE - INTERVAL '1 day' THEN 'recent'
+            WHEN uc.correct_solves > 0 OR uc.incorrect_solves > 0 THEN 'seen'
+            ELSE 'unseen'
+        END as status,
+        uc.last_solve
+    FROM collection__clue cc
+    LEFT JOIN user__clue uc ON cc.clue_id = uc.clue_id AND uc.user_id = p_user_id
     WHERE cc.collection_id = p_collection_id
-    AND (uc.correct_solves IS NULL OR uc.correct_solves < uc.correct_solves_needed);
+    AND (uc.correct_solves IS NULL OR uc.correct_solves < uc.correct_solves_needed)  -- not completed
+    AND (uc.last_solve IS NULL OR uc.last_solve < CURRENT_DATE - INTERVAL '1 day'); -- not seen recently
 
-    -- Count clues seen in the past 24 hours
-    SELECT COUNT(*) INTO clues_seen_24h
-    FROM clue c
-    INNER JOIN collection__clue cc ON c.id = cc.clue_id
-    INNER JOIN user__clue uc ON c.id = uc.clue_id
-    WHERE cc.collection_id = p_collection_id
-    AND uc.user_id = p_user_id
-    AND uc.last_solve >= NOW() - INTERVAL '24 hours';
-
-    -- Get total clues count
-    SELECT COUNT(*) INTO total_clues
-    FROM clue c
-    INNER JOIN collection__clue cc ON c.id = cc.clue_id
-    WHERE cc.collection_id = p_collection_id;
-
-    -- If all clues have been seen in the past 24 hours, return empty batch
-    IF clues_seen_24h >= total_clues THEN
-        RETURN '[]'::jsonb;
-    END IF;
-
-    -- Get unseen clue IDs (clues user has never seen or not completed)
-    SELECT jsonb_agg(c.id ORDER BY COALESCE(uc.last_solve, '1900-01-01'::date) ASC)
-    INTO unseen_clue_ids
-    FROM clue c
-    INNER JOIN collection__clue cc ON c.id = cc.clue_id
-    LEFT JOIN user__clue uc ON c.id = uc.clue_id AND uc.user_id = p_user_id
-    WHERE cc.collection_id = p_collection_id
-    AND (uc.user_id IS NULL OR uc.last_solve IS NULL OR (uc.correct_solves IS NULL OR uc.correct_solves < uc.correct_solves_needed))
-    AND (all_completed OR uc.correct_solves IS NULL OR uc.correct_solves < uc.correct_solves_needed);
-
-    -- Get seen clue IDs (clues user has seen but not completed, not seen in past 24 hours)
-    SELECT jsonb_agg(c.id ORDER BY COALESCE(uc.last_solve, '1900-01-01'::date) ASC)
-    INTO seen_clue_ids
-    FROM clue c
-    INNER JOIN collection__clue cc ON c.id = cc.clue_id
-    INNER JOIN user__clue uc ON c.id = uc.clue_id
-    WHERE cc.collection_id = p_collection_id
-    AND uc.user_id = p_user_id
-    AND uc.last_solve IS NOT NULL
-    AND uc.last_solve < NOW() - INTERVAL '24 hours'
-    AND (all_completed OR uc.correct_solves IS NULL OR uc.correct_solves < uc.correct_solves_needed);
-
-    -- Count available clues
-    SELECT 
-        COALESCE(jsonb_array_length(unseen_clue_ids), 0),
-        COALESCE(jsonb_array_length(seen_clue_ids), 0)
-    INTO total_unseen, total_seen;
-
-    -- Adjust counts based on availability with improved logic
-    IF total_seen < seen_count THEN
-        -- If fewer than 7 seen clues, fill remaining slots with unseen clues
-        seen_count := total_seen;
-        unseen_count := LEAST(batch_size - seen_count, total_unseen);
-    ELSIF total_unseen < unseen_count THEN
-        -- If fewer than 13 unseen clues, fill remaining slots with seen clues
-        unseen_count := total_unseen;
-        seen_count := LEAST(batch_size - unseen_count, total_seen);
-    END IF;
-
-    -- Combine and randomize the batch
-    WITH unseen_sample AS (
-        SELECT value FROM jsonb_array_elements(COALESCE(unseen_clue_ids, '[]'::jsonb)) LIMIT unseen_count
-    ),
-    seen_sample AS (
-        SELECT value FROM jsonb_array_elements(COALESCE(seen_clue_ids, '[]'::jsonb)) LIMIT seen_count
-    )
-    SELECT jsonb_agg(value ORDER BY random())
-    INTO result_json
+    -- Get unseen clues ordered by earliest last_solve (NULL first, then oldest)
+    SELECT array_agg(clue_id)
+    INTO v_unseen_clues
     FROM (
-        SELECT value FROM unseen_sample
-        UNION ALL
-        SELECT value FROM seen_sample
-    ) AS combined;
+        SELECT clue_id
+        FROM eligible_clues
+        WHERE status = 'unseen'
+        ORDER BY last_solve NULLS FIRST, clue_id
+    ) t;
 
-    RETURN COALESCE(result_json, '[]'::jsonb);
+    -- Get seen clues ordered by earliest last_solve
+    SELECT array_agg(clue_id)
+    INTO v_seen_clues
+    FROM (
+        SELECT clue_id
+        FROM eligible_clues
+        WHERE status = 'seen'
+        ORDER BY last_solve NULLS FIRST, clue_id
+    ) t;
+
+    -- If no eligible clues, return random batch of 20 clues from collection
+    IF (array_length(v_unseen_clues, 1) IS NULL OR array_length(v_unseen_clues, 1) = 0) AND
+       (array_length(v_seen_clues, 1) IS NULL OR array_length(v_seen_clues, 1) = 0) THEN
+        SELECT array_agg(clue_id ORDER BY random())
+        INTO v_clue_ids
+        FROM (
+            SELECT clue_id
+            FROM collection__clue
+            WHERE collection_id = p_collection_id
+            ORDER BY random()
+            LIMIT v_batch_size
+        ) sub;
+
+        RETURN COALESCE(v_clue_ids, '{}');
+    END IF;
+
+    -- Build the batch according to target mix
+    v_clue_ids := '{}';
+
+    -- Add unseen clues (up to target, or all available)
+    IF array_length(v_unseen_clues, 1) IS NOT NULL AND array_length(v_unseen_clues, 1) > 0 THEN
+        v_clue_ids := array_cat(
+            v_clue_ids,
+            (SELECT array_agg(elem ORDER BY random())
+             FROM (
+                 SELECT elem
+                 FROM unnest(v_unseen_clues) AS elem
+                 LIMIT LEAST(v_target_unseen, array_length(v_unseen_clues, 1))
+             ) sub)
+        );
+    END IF;
+
+    -- Add seen clues (up to target, or all available)
+    IF array_length(v_seen_clues, 1) IS NOT NULL AND array_length(v_seen_clues, 1) > 0 THEN
+        v_clue_ids := array_cat(
+            v_clue_ids,
+            (SELECT array_agg(elem ORDER BY random())
+             FROM (
+                 SELECT elem
+                 FROM unnest(v_seen_clues) AS elem
+                 LIMIT LEAST(v_target_seen, array_length(v_seen_clues, 1))
+             ) sub)
+        );
+    END IF;
+
+    -- If we have fewer than 20 clues, fill remaining with additional unseen or seen clues
+    IF array_length(v_clue_ids, 1) < v_batch_size THEN
+        -- First try to fill with remaining unseen clues
+        IF array_length(v_unseen_clues, 1) IS NOT NULL AND array_length(v_unseen_clues, 1) > v_target_unseen THEN
+            v_clue_ids := array_cat(
+                v_clue_ids,
+                (SELECT array_agg(elem ORDER BY random())
+                 FROM (
+                     SELECT elem
+                     FROM unnest(v_unseen_clues[v_target_unseen + 1:]) AS elem
+                     LIMIT v_batch_size - array_length(v_clue_ids, 1)
+                 ) sub)
+            );
+        END IF;
+
+        -- If still need more, fill with remaining seen clues
+        IF array_length(v_clue_ids, 1) < v_batch_size AND
+           array_length(v_seen_clues, 1) IS NOT NULL AND array_length(v_seen_clues, 1) > v_target_seen THEN
+            v_clue_ids := array_cat(
+                v_clue_ids,
+                (SELECT array_agg(elem ORDER BY random())
+                 FROM (
+                     SELECT elem
+                     FROM unnest(v_seen_clues[v_target_seen + 1:]) AS elem
+                     LIMIT v_batch_size - array_length(v_clue_ids, 1)
+                 ) sub)
+            );
+        END IF;
+    END IF;
+
+    -- Final randomization of the batch
+    SELECT array_agg(elem ORDER BY random())
+    INTO v_clue_ids
+    FROM unnest(v_clue_ids) AS elem;
+
+    RETURN COALESCE(v_clue_ids, '{}');
 END;
 $$ LANGUAGE plpgsql;
 
@@ -473,7 +508,7 @@ BEGIN
             'progress_data', CASE 
                 WHEN p_user_id IS NOT NULL THEN
                     jsonb_build_object(
-                        'total_solves', COALESCE(cd.correct_solves, 0) + COALESCE(cd.incorrect_solves, 0),
+                        'correct_solves_needed', COALESCE(cd.correct_solves_needed, 0),
                         'correct_solves', COALESCE(cd.correct_solves, 0),
                         'incorrect_solves', COALESCE(cd.incorrect_solves, 0),
                         'last_solve', cd.last_solve

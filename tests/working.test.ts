@@ -3,7 +3,9 @@ import { describe, it, expect, vi } from 'vitest'
 // Mock the CruziDao module with a simple approach
 vi.mock('../src/daos/CruziDao', () => {
   const mockInstance = {
-    getCollectionBatch: vi.fn()
+    selectCollectionBatch: vi.fn(),
+    populateCollectionBatch: vi.fn(),
+    initializeUserCollectionProgress: vi.fn()
   }
   return {
     default: vi.fn(() => mockInstance)
@@ -22,14 +24,17 @@ describe('Working Test', () => {
   })
 
   it('should test getCollectionBatch', async () => {
-    const mockBatch = [{ id: '1', entry: { entry: 'test', lang: 'en' } }]
-    
+    const mockClueIds = ['clue-1']
+    const mockBatch = [{ id: 'clue-1', entry: { entry: 'test', lang: 'en' } }]
+
     // Create a new instance to get the mock
     const mockDao = new CruziDao()
-    vi.mocked(mockDao.getCollectionBatch).mockResolvedValue(mockBatch)
-    
+    vi.mocked(mockDao.selectCollectionBatch).mockResolvedValue(mockClueIds)
+    vi.mocked(mockDao.populateCollectionBatch).mockResolvedValue(mockBatch)
+    vi.mocked(mockDao.initializeUserCollectionProgress).mockResolvedValue()
+
     const mockReq = {
-      query: { id: 'collection-123' },
+      query: { collection_id: 'collection-123' },
       userId: 'user-123'
     } as any
 
@@ -40,7 +45,9 @@ describe('Working Test', () => {
 
     await getCollectionBatch(mockReq, mockRes)
 
-    expect(mockDao.getCollectionBatch).toHaveBeenCalledWith('user-123', 'collection-123')
+    expect(mockDao.initializeUserCollectionProgress).toHaveBeenCalledWith('user-123', 'collection-123')
+    expect(mockDao.selectCollectionBatch).toHaveBeenCalledWith('user-123', 'collection-123')
+    expect(mockDao.populateCollectionBatch).toHaveBeenCalledWith(mockClueIds, 'user-123')
     expect(mockRes.status).toHaveBeenCalledWith(StatusCodes.OK)
     expect(mockRes.json).toHaveBeenCalledWith(mockBatch)
   })
