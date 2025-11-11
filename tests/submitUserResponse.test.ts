@@ -46,6 +46,7 @@ describe('submitUserResponse', () => {
     const userResponse: UserResponse = {
       userId: '', // Will be set by the handler
       clueId: 'clue-123',
+      collectionId: 'collection-123',
       isCorrect: true
     }
     
@@ -59,6 +60,7 @@ describe('submitUserResponse', () => {
     expect(mockDao.submitUserResponse).toHaveBeenCalledWith('user-123', {
       userId: 'user-123',
       clueId: 'clue-123',
+      collectionId: 'collection-123',
       isCorrect: true
     })
     expect(mockStatus).toHaveBeenCalledWith(StatusCodes.OK)
@@ -73,6 +75,7 @@ describe('submitUserResponse', () => {
     const userResponse: UserResponse = {
       userId: '',
       clueId: 'clue-456',
+      collectionId: 'collection-456',
       isCorrect: false
     }
     
@@ -86,6 +89,7 @@ describe('submitUserResponse', () => {
     expect(mockDao.submitUserResponse).toHaveBeenCalledWith('user-123', {
       userId: 'user-123',
       clueId: 'clue-456',
+      collectionId: 'collection-456',
       isCorrect: false
     })
     expect(mockStatus).toHaveBeenCalledWith(StatusCodes.OK)
@@ -146,8 +150,8 @@ describe('submitUserResponse', () => {
     await submitUserResponse(mockReq as Request, mockRes as Response)
 
     expect(mockStatus).toHaveBeenCalledWith(StatusCodes.BAD_REQUEST)
-    expect(mockJson).toHaveBeenCalledWith({ 
-      error: 'Invalid request body. Required fields: clueId (string), isCorrect (boolean)' 
+    expect(mockJson).toHaveBeenCalledWith({
+      error: 'Invalid request body. Required fields: clueId (string), collectionId (string), isCorrect (boolean)'
     })
     expect(mockDao.submitUserResponse).not.toHaveBeenCalled()
   })
@@ -165,8 +169,8 @@ describe('submitUserResponse', () => {
     await submitUserResponse(mockReq as Request, mockRes as Response)
 
     expect(mockStatus).toHaveBeenCalledWith(StatusCodes.BAD_REQUEST)
-    expect(mockJson).toHaveBeenCalledWith({ 
-      error: 'Invalid request body. Required fields: clueId (string), isCorrect (boolean)' 
+    expect(mockJson).toHaveBeenCalledWith({
+      error: 'Invalid request body. Required fields: clueId (string), collectionId (string), isCorrect (boolean)'
     })
     expect(mockDao.submitUserResponse).not.toHaveBeenCalled()
   })
@@ -185,8 +189,8 @@ describe('submitUserResponse', () => {
     await submitUserResponse(mockReq as Request, mockRes as Response)
 
     expect(mockStatus).toHaveBeenCalledWith(StatusCodes.BAD_REQUEST)
-    expect(mockJson).toHaveBeenCalledWith({ 
-      error: 'Invalid request body. Required fields: clueId (string), isCorrect (boolean)' 
+    expect(mockJson).toHaveBeenCalledWith({
+      error: 'Invalid request body. Required fields: clueId (string), collectionId (string), isCorrect (boolean)'
     })
     expect(mockDao.submitUserResponse).not.toHaveBeenCalled()
   })
@@ -205,8 +209,8 @@ describe('submitUserResponse', () => {
     await submitUserResponse(mockReq as Request, mockRes as Response)
 
     expect(mockStatus).toHaveBeenCalledWith(StatusCodes.BAD_REQUEST)
-    expect(mockJson).toHaveBeenCalledWith({ 
-      error: 'Invalid request body. Required fields: clueId (string), isCorrect (boolean)' 
+    expect(mockJson).toHaveBeenCalledWith({
+      error: 'Invalid request body. Required fields: clueId (string), collectionId (string), isCorrect (boolean)'
     })
     expect(mockDao.submitUserResponse).not.toHaveBeenCalled()
   })
@@ -219,6 +223,7 @@ describe('submitUserResponse', () => {
     const userResponse: UserResponse = {
       userId: '',
       clueId: 'clue-123',
+      collectionId: 'collection-123',
       isCorrect: true
     }
     
