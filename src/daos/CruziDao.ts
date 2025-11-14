@@ -12,6 +12,7 @@ class CruziDao implements ICruziDao {
     public async addClueToCollection(collectionId: string, clue: Clue): Promise<void> {
         const clueData = {
             collection_id: collectionId,
+            id: clue.id,
             entry: clue.entry?.entry,
             lang: clue.entry?.lang,
             custom_clue: clue.customClue,
@@ -39,6 +40,7 @@ class CruziDao implements ICruziDao {
             root_entry: entry.rootEntry,
             display_text: entry.displayText,
             entry_type: entry.entryType,
+            loading_status: entry.loadingStatus,
         }));  
 
         await sqlQuery(true, 'upsert_entries', [
@@ -97,6 +99,37 @@ class CruziDao implements ICruziDao {
         } as ClueCollection));
     }
 
+    // Maps get_collection_by_id result to ClueCollection | null
+    public async getCollectionById(collectionId: string, userId?: string): Promise<ClueCollection | null> {
+        const result = await sqlQuery(true, 'get_collection_by_id', [
+            { name: 'p_collection_id', value: collectionId },
+            { name: 'p_user_id', value: userId || null }
+        ]);
+
+        if (!result || result.length === 0 || !result[0].get_collection_by_id) {
+            return null;
+        }
+
+        const raw = result[0].get_collection_by_id;
+        return {
+            id: raw.id,
+            title: raw.title,
+            author: raw.author,
+            lang: raw.lang,
+            description: raw.description,
+            isCrosswordCollection: raw.is_crossword_collection || false,
+            isPrivate: raw.is_private,
+            createdDate: new Date(raw.created_date),
+            modifiedDate: raw.modified_date ? new Date(raw.modified_date) : new Date(raw.created_date),
+            clueCount: raw.clue_count,
+            metadata1: raw.metadata1,
+            metadata2: raw.metadata2,
+            creator: mapCreator(raw.creator),
+            progressData: mapCollectionProgressData(raw.user_progress, userId, raw.id),
+            clues: [],
+        } as ClueCollection;
+    }
+
     // Maps get_clue_collections result to ClueCollection[]
     public async getCollectionList(userId?: string): Promise<ClueCollection[]> {
         const result = await sqlQuery(true, 'get_clue_collections', [
@@ -112,6 +145,7 @@ class CruziDao implements ICruziDao {
             id: raw.id,
             title: raw.title,
             author: raw.author,
+            lang: raw.lang,
             description: raw.description,
             isCrosswordCollection: raw.is_crossword_collection,
             isPrivate: raw.is_private,
@@ -299,6 +333,7 @@ class CruziDao implements ICruziDao {
             clue: raw.clue,
             progress: raw.progress,
             status: raw.status,
+            senses: raw.senses || [],
         } as CollectionClueRow));
     }
 
@@ -348,6 +383,7 @@ class CruziDao implements ICruziDao {
             id: clue.id,
             entry: clue.entry?.entry,
             lang: clue.entry?.lang,
+            sense_id: typeof clue.sense === 'string' ? clue.sense : (clue.sense as any)?.id,
             clue: clue.customClue,
             source: clue.source,
         };
@@ -411,13 +447,6 @@ class CruziDao implements ICruziDao {
         } as Entry;
     }
 
-    // Calls add_to_entry_queue
-    public async addToEntryInfoQueue(entry: string): Promise<void> {
-        await sqlQuery(true, 'add_to_entry_queue', [
-            { name: 'p_entry', value: entry }
-        ]);
-    }
-
     // Maps query_entries result to Entry[]
     public async queryEntries(params: EntryQueryParams): Promise<Entry[]> {
         const jsonbParams = {
@@ -467,6 +496,64 @@ class CruziDao implements ICruziDao {
         await sqlQuery(true, 'initialize_user_collection_progress', [
             { name: 'p_user_id', value: userId },
             { name: 'p_collection_id', value: collectionId }
+        ]);
+    }
+
+    // Gets senses for a specific entry
+    public async getSensesForEntry(entry: string, lang: string): Promise<Sense[]> {
+        const result = await sqlQuery(true, 'get_senses_for_entry', [
+            { name: 'p_entry', value: entry },
+            { name: 'p_lang', value: lang }
+        ]);
+
+        if (!result || result.length === 0) {
+            return [];
+        }
+
+        return result.map((row: any) => ({
+            id: row.id,
+            partOfSpeech: row.part_of_speech,
+            commonness: row.commonness,
+            summary: deepConvertToObject(row.summary),
+            definition: deepConvertToObject(row.definition),
+            exampleSentences: row.example_sentences || [],
+            translations: deepConvertToObject(row.translations),
+            sourceAi: row.source_ai,
+        } as Sense));
+    }
+
+    // Gets a clue by entry in a specific collection
+    public async getClueByEntryInCollection(collectionId: string, entry: string, lang: string): Promise<Clue | null> {
+        const result = await sqlQuery(true, 'get_clue_by_entry_in_collection', [
+            { name: 'p_collection_id', value: collectionId },
+            { name: 'p_entry', value: entry },
+            { name: 'p_lang', value: lang }
+        ]);
+
+        if (!result || result.length === 0 || !result[0].get_clue_by_entry_in_collection || result[0].get_clue_by_entry_in_collection.length === 0) {
+            return null;
+        }
+
+        const row = result[0][0]; // result[0] is the array returned by the function, result[0][0] is the clue object
+        return {
+            id: row.id,
+            entry: {
+                entry: row.entry,
+                lang: row.lang,
+            },
+            sense: row.sense_id,
+            customClue: row.custom_clue,
+            customDisplayText: row.custom_display_text,
+            source: row.source,
+            translatedClues: deepConvertToObject(row.translated_clues),
+        } as Clue;
+    }
+
+    // Adds an entry to the entry info queue
+    public async addToEntryInfoQueue(entry: string, lang: string): Promise<void> {
+        await sqlQuery(true, 'add_to_entry_info_queue', [
+            { name: 'p_entry', value: entry },
+            { name: 'p_lang', value: lang }
         ]);
     }
 }

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { getCrosswordList } from '../handlers/getCrosswordList';
 import { getCrossword } from '../handlers/getCrossword';
 import { getCollectionList } from '../handlers/getCollectionList';
+import { getCollectionById } from '../handlers/getCollectionById';
 import { authenticateOptional, requireAuth } from '../middleware/auth';
 import { getCollectionBatch } from '../handlers/getCollectionBatch';
 import { getCollectionClues } from '../handlers/getCollectionClues';
@@ -11,6 +12,8 @@ import { addCluesToCollection } from '../handlers/addCluesToCollection';
 import { reopenCollection } from '../handlers/reopenCollection';
 import { handleGoogleAuth } from '../handlers/handleGoogleAuth';
 import { verifyAuth } from '../handlers/verifyAuth';
+import { upsertEntryInformation } from '../handlers/upsertEntryInformation';
+import { updateClueSense } from '../handlers/updateClueSense';
 
 const apiRouter = Router();
 
@@ -20,6 +23,7 @@ apiRouter.get('/auth/verify', verifyAuth);
 
 //apiRouter.get('/getCrosswordList', getCrosswordList);
 apiRouter.get('/getCollectionList', authenticateOptional, getCollectionList);
+apiRouter.get('/getCollectionById/:id', authenticateOptional, getCollectionById);
 //apiRouter.get('/getCrossword', getCrossword);
 apiRouter.get('/getCollectionBatch', authenticateOptional, getCollectionBatch);
 apiRouter.get('/getCollectionClues', authenticateOptional, getCollectionClues);
@@ -32,5 +36,7 @@ apiRouter.post('/reopenCollection', requireAuth, reopenCollection);
 //apiRouter.post('/createClue', createClue);
 apiRouter.post('/addCluesToCollection', addCluesToCollection);
 apiRouter.post('/removeClueFromCollection', removeClueFromCollection);
+apiRouter.post('/upsertEntryInformation', upsertEntryInformation);
+apiRouter.post('/updateClueSense', updateClueSense);
 
 export default apiRouter;

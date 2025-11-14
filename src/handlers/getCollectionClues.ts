@@ -21,6 +21,8 @@ Columns to be returned:
 - Status : One of (Ready, Processing, Invalid), based on the loading status of the Entry 
    referenced by the clue. "Ready" if there is no loading status provided.
    - This column is filterable.
+- Senses : A list of all the senses for the entry referenced by the clue. This should be in the 
+  form of [{sense_id: string, sense_summary: string}]. Again, in the language of the Entry.
    
 Additionally, the handler should accept a page number and return paginated results of 100 results
 per page.

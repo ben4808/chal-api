@@ -10,6 +10,7 @@ import { User } from "../models/User";
 export interface ICruziDao {
   getCrosswordList(date: Date): Promise<ClueCollection[]>;
   getCollectionList(userId?: string): Promise<ClueCollection[]>;
+  getCollectionById(collectionId: string, userId?: string): Promise<ClueCollection | null>;
 
   getCrosswordId(source: string, date: Date): Promise<string | null>;
   selectCollectionBatch(userId: string | undefined, collectionId: string): Promise<string[]>;
@@ -36,7 +37,9 @@ export interface ICruziDao {
   updateSingleClue(clue: Clue): Promise<Clue>;
 
   getEntry(entry: string): Promise<Entry | null>;
-  addToEntryInfoQueue(entry: string): Promise<void>;
+  getSensesForEntry(entry: string, lang: string): Promise<Sense[]>;
+  getClueByEntryInCollection(collectionId: string, entry: string, lang: string): Promise<Clue | null>;
+  addToEntryInfoQueue(entry: string, lang: string): Promise<void>;
 
   queryEntries(params: EntryQueryParams): Promise<Entry[]>;
 
