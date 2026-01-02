@@ -14,7 +14,7 @@ BEGIN
                 'entry', c.entry,
                 'lang', c.lang,
                 'loading_status', e.loading_status,
-                'clue', c.clue,
+                'clue', c.custom_clue,
                 'source', c.source,
                 'collection_order', cc.order,
                 'metadata1', cc.metadata1,

@@ -366,13 +366,15 @@ class CruziDao implements ICruziDao {
         const raw = result[0].get_single_clue;
         return {
             id: raw.id,
-            clue: raw.clue,
+            customClue: raw.custom_clue,
+            customDisplayText: raw.custom_display_text,
             entry: {
                 entry: raw.entry,
                 lang: raw.lang,
                 loadingStatus: raw.loading_status,
             } as Entry,
             lang: raw.lang,
+            sense: raw.sense_id,
             source: raw.source,
         } as Clue;
     }
@@ -384,30 +386,16 @@ class CruziDao implements ICruziDao {
             entry: clue.entry?.entry,
             lang: clue.entry?.lang,
             sense_id: typeof clue.sense === 'string' ? clue.sense : (clue.sense as any)?.id,
-            clue: clue.customClue,
+            custom_clue: clue.customClue,
+            custom_display_text: clue.customDisplayText,
             source: clue.source,
         };
 
-        const result = await sqlQuery(true, 'upsert_single_clue', [
+        await sqlQuery(true, 'upsert_single_clue', [
             { name: 'clue_data', value: clueData }
         ]);
 
-        if (!result || result.length === 0 || !result[0].upsert_single_clue) {
-            throw new Error('Failed to upsert clue.');
-        }
-
-        const raw = result[0].get_single_clue;
-        return {
-            id: raw.id,
-            clue: raw.clue,
-            entry: {
-                entry: raw.entry,
-                lang: raw.lang,
-                loadingStatus: raw.loading_status,
-            } as Entry,
-            lang: raw.lang,
-            source: raw.source,
-        } as Clue;
+        return clue;
     }
 
     // Maps get_entry result to Entry

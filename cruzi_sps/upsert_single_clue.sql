@@ -16,23 +16,25 @@ BEGIN
         entry,
         lang,
         sense_id,
-        clue,
+        custom_clue,
+        custom_display_text,
         source
-        -- metadata1 and metadata2 are not in the clue table schema provided
     )
     VALUES (
         clue_id,
         clue_data ->> 'entry',
         clue_data ->> 'lang',
         clue_data ->> 'sense_id',
-        clue_data ->> 'clue',
+        clue_data ->> 'custom_clue',
+        clue_data ->> 'custom_display_text',
         clue_data ->> 'source'
     )
     ON CONFLICT (id) DO UPDATE SET
         entry = EXCLUDED.entry,
         lang = EXCLUDED.lang,
         sense_id = EXCLUDED.sense_id,
-        clue = EXCLUDED.clue,
+        custom_clue = EXCLUDED.custom_clue,
+        custom_display_text = EXCLUDED.custom_display_text,
         source = EXCLUDED.source
     RETURNING id INTO clue_id;
 

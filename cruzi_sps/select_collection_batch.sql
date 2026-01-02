@@ -23,9 +23,11 @@ BEGIN
         SELECT array_agg(clue_id ORDER BY random())
         INTO v_clue_ids
         FROM (
-            SELECT clue_id
-            FROM collection__clue
-            WHERE collection_id = p_collection_id
+            SELECT cc.clue_id
+            FROM collection__clue cc
+            JOIN clue c ON cc.clue_id = c.id
+            WHERE cc.collection_id = p_collection_id
+            AND (c.sense_id IS NOT NULL OR c.custom_clue IS NOT NULL)
             ORDER BY random()
             LIMIT v_batch_size
         ) sub;
@@ -45,8 +47,10 @@ BEGIN
         END as status,
         uc.last_solve
     FROM collection__clue cc
+    JOIN clue c ON cc.clue_id = c.id
     LEFT JOIN user__clue uc ON cc.clue_id = uc.clue_id AND uc.user_id = p_user_id
     WHERE cc.collection_id = p_collection_id
+    AND (c.sense_id IS NOT NULL OR c.custom_clue IS NOT NULL)
     AND (uc.correct_solves IS NULL OR uc.correct_solves < uc.correct_solves_needed)  -- not completed
     AND (uc.last_solve IS NULL OR uc.last_solve < CURRENT_DATE - INTERVAL '1 day'); -- not seen recently
 
@@ -76,9 +80,11 @@ BEGIN
         SELECT array_agg(clue_id ORDER BY random())
         INTO v_clue_ids
         FROM (
-            SELECT clue_id
-            FROM collection__clue
-            WHERE collection_id = p_collection_id
+            SELECT cc.clue_id
+            FROM collection__clue cc
+            JOIN clue c ON cc.clue_id = c.id
+            WHERE cc.collection_id = p_collection_id
+            AND (c.sense_id IS NOT NULL OR c.custom_clue IS NOT NULL)
             ORDER BY random()
             LIMIT v_batch_size
         ) sub;
