@@ -15,5 +15,5 @@ COPY . .
 EXPOSE 3000
 
 # Start the app (better than "npm start" in many cases)
-CMD ["node", "index.js"]
+CMD ["node", "dist/src/index.js"]
 # or: CMD ["npm", "start"] if you prefer
