@@ -1,13 +1,25 @@
 import  { Pool } from 'pg';
 import { PostgresParameter } from './PostgresParameter';
 
-let pool = new Pool({
-    user: process.env.DB_USER,
-    host: process.env.DB_HOST || 'localhost',
-    database: process.env.DB_NAME || 'cruzi',
-    password: process.env.DB_PASSWORD,
-    port: parseInt(process.env.DB_PORT || '5432'),
-});
+// Try to use DATABASE_URL if available, otherwise fall back to individual env vars
+let pool: Pool;
+const databaseUrl = process.env.DATABASE_URL;
+
+if (databaseUrl) {
+    console.log('Using DATABASE_URL:', databaseUrl);
+    pool = new Pool({
+        connectionString: databaseUrl,
+    });
+} else {
+    console.log('Using individual env vars:', process.env.DB_USER, process.env.DB_HOST, process.env.DB_NAME, process.env.DB_PASSWORD, process.env.DB_PORT);
+    pool = new Pool({
+        user: process.env.DB_USER,
+        host: process.env.DB_HOST || 'localhost',
+        database: process.env.DB_NAME || 'cruzi',
+        password: process.env.DB_PASSWORD,
+        port: parseInt(process.env.DB_PORT || '5432'),
+    });
+}
 
 export async function sqlQuery(isFunction: boolean, queryOrFunctionName: string, parameters?: PostgresParameter[]): Promise<any[]> {
     try {

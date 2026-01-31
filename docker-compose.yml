@@ -1,0 +1,22 @@
+services:
+  db:
+    image: postgres:latest
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - pgdata:/var/lib/postgresql
+      - ./db/init:/docker-entrypoint-initdb.d   # Mount your init scripts here
+    restart: unless-stopped
+
+  app:
+    image: cruzi:latest
+    depends_on: [db]
+    environment:
+      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
+    ports:
+      - "80:3000"
+
+volumes:
+  pgdata:
