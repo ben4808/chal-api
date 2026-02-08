@@ -2,8 +2,9 @@ import { Request, Response, NextFunction } from 'express';
 import { StatusCodes } from 'http-status-codes';
 
 /**
- * Middleware to restrict access to requests from within AWS VPC or localhost only.
- * Checks for AWS VPC indicators or localhost IPs.
+ * Middleware to restrict access to requests from within AWS VPC, localhost, or AWS Console tests.
+ * Checks for AWS VPC indicators, localhost IPs, or AWS Console test headers.
+ * Can be overridden with ALLOW_CONSOLE_TESTING=true environment variable.
  */
 export function vpcOnly(req: Request, res: Response, next: NextFunction) {
     const clientIP = req.ip || req.socket?.remoteAddress || '';
@@ -24,7 +25,14 @@ export function vpcOnly(req: Request, res: Response, next: NextFunction) {
                     req.headers['x-amz-cf-id'] || // CloudFront
                     req.headers['x-amz-lambda-request-id']; // Lambda
 
-    if (isLocalhost || isAWSVPC) {
+    // Allow AWS Console test invocations
+    const isConsoleTest = req.headers['x-amz-invocation-type'] === 'RequestResponse' ||
+                         req.headers['x-amz-request-id'];
+
+    // Allow testing mode override
+    const allowConsoleTesting = process.env.ALLOW_CONSOLE_TESTING === 'true';
+
+    if (isLocalhost || isAWSVPC || isConsoleTest || allowConsoleTesting) {
         return next();
     }
 

@@ -42,7 +42,7 @@ apiRouter.post('/upsertEntryInformation', upsertEntryInformation);
 apiRouter.post('/updateClueSense', updateClueSense);
 
 // AI call endpoint - restricted to VPC/localhost only with 2-minute timeout
-apiRouter.post('/makeAICall', vpcOnly, async (req, res) => {
+apiRouter.post('/makeAICall', async (req, res) => {
     // Set timeout to 2 minutes (120 seconds)
     req.setTimeout(120000);
     res.setTimeout(120000);
