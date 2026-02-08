@@ -14,6 +14,8 @@ import { handleGoogleAuth } from '../handlers/handleGoogleAuth';
 import { verifyAuth } from '../handlers/verifyAuth';
 import { upsertEntryInformation } from '../handlers/upsertEntryInformation';
 import { updateClueSense } from '../handlers/updateClueSense';
+import { makeAICall } from '../handlers/makeAICall';
+import { vpcOnly } from '../middleware/vpcOnly';
 
 const apiRouter = Router();
 
@@ -38,5 +40,13 @@ apiRouter.post('/addCluesToCollection', addCluesToCollection);
 apiRouter.post('/removeClueFromCollection', removeClueFromCollection);
 apiRouter.post('/upsertEntryInformation', upsertEntryInformation);
 apiRouter.post('/updateClueSense', updateClueSense);
+
+// AI call endpoint - restricted to VPC/localhost only with 2-minute timeout
+apiRouter.post('/makeAICall', vpcOnly, async (req, res) => {
+    // Set timeout to 2 minutes (120 seconds)
+    req.setTimeout(120000);
+    res.setTimeout(120000);
+    await makeAICall(req, res);
+});
 
 export default apiRouter;

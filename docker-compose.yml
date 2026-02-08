@@ -8,6 +8,8 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql
       - ./db/init:/docker-entrypoint-initdb.d   # Mount your init scripts here
+    ports:
+      - "5432:5432"
     restart: unless-stopped
 
   app:
