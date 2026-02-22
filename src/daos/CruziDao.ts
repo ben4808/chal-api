@@ -20,8 +20,8 @@ class CruziDao implements ICruziDao {
             source: clue.source,
         };
 
-        await sqlQuery(true, 'add_clue_to_collection', [
-            { name: 'clue_data', value: clueData }
+        await sqlQuery(true, 'add_clues_to_collection', [
+            { name: 'clue_data', value: [clueData]}
         ]);
     }
 
@@ -415,14 +415,14 @@ class CruziDao implements ICruziDao {
             length: raw.length,
             displayText: raw.display_text,
             entryType: raw.entry_type,
-            obscurityScore: raw.obscurity_score,
+            familiarityScore: raw.familiarity_score,
             qualityScore: raw.quality_score,
             loadingStatus: raw.loading_status,
             senses: raw.senses ? raw.senses.map((sense: any) => ({
                 id: sense.id,
                 summary: sense.summary,
                 definition: sense.definition,
-                obscurityScore: sense.obscurity_score,
+                familiarityScore: sense.familiarity_score,
                 qualityScore: sense.quality_score,
                 sourceAi: sense.source_ai,
                 exampleSentences: sense.example_sentences ? sense.example_sentences.map((ex: any) => ({
@@ -461,7 +461,7 @@ class CruziDao implements ICruziDao {
             length: raw.length,
             displayText: raw.display_text,
             entryType: raw.entry_type,
-            obscurityScore: raw.familiarity_score,
+            familiarityScore: raw.familiarity_score,
             qualityScore: raw.quality_score,
             loadingStatus: raw.loading_status,
         } as Entry));
