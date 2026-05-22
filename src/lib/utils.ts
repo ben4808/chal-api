@@ -35,6 +35,17 @@ export function mapValues<TKey, TVal>(map: Map<TKey, TVal>): TVal[] {
     return Array.from(map.values()) || [];
 }
 
+/** Coerce API / jsonb summary or definition payloads to a single string for [[Sense]]. */
+export function pickLocalizedText(val: any): string | undefined {
+    if (val == null) return undefined;
+    if (typeof val === "string") return val;
+    if (typeof val === "object") {
+        const v = val as Record<string, string>;
+        return v.en ?? v[Object.keys(v)[0]];
+    }
+    return undefined;
+}
+
 export function getRandomInt(max: number) {
     return Math.floor(Math.random() * max);
 }

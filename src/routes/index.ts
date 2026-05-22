@@ -23,10 +23,10 @@ const apiRouter = Router();
 apiRouter.post('/auth/google', handleGoogleAuth);
 apiRouter.get('/auth/verify', verifyAuth);
 
-//apiRouter.get('/getCrosswordList', getCrosswordList);
+apiRouter.get('/getCrosswordList', authenticateOptional, getCrosswordList);
 apiRouter.get('/getCollectionList', authenticateOptional, getCollectionList);
 apiRouter.get('/getCollectionById/:id', authenticateOptional, getCollectionById);
-//apiRouter.get('/getCrossword', getCrossword);
+apiRouter.get('/getCrossword', authenticateOptional, getCrossword);
 apiRouter.get('/getCollectionBatch', authenticateOptional, getCollectionBatch);
 apiRouter.get('/getCollectionClues', authenticateOptional, getCollectionClues);
 apiRouter.post('/submitUserResponse', requireAuth, submitUserResponse);

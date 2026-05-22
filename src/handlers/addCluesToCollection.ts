@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
 import { StatusCodes } from 'http-status-codes';
 import CruziDao from "../daos/CruziDao";
-import { Entry } from "../models/Entry";
-import { Clue } from "../models/Clue";
+import { Entry, Sense } from 'cruzi-models';
+import { CluePersisted } from "../daos/ICruziDao";
 import { generateId } from "../lib/utils";
 import { processSenses } from "../lib/entryProcessingUtils";
 
@@ -78,46 +78,46 @@ export async function addCluesToCollection(req: Request, res: Response) {
 
             // Step 2: Check if there's already a clue with this entry in the collection
             const existingClue = await dao.getClueByEntryInCollection(collectionId, entryData.entry, entryData.lang);
-            let clueWasCreated = false;
 
             if (existingClue) {
                 // Update existing clue with new information
-                const updatedClue = { ...existingClue };
+                const updatedClue: CluePersisted = { ...existingClue };
                 if (clue.clue) {
                     updatedClue.customClue = clue.clue.customClue || updatedClue.customClue;
                     updatedClue.customDisplayText = clue.clue.customDisplayText || updatedClue.customDisplayText;
                     updatedClue.source = clue.clue.source || updatedClue.source;
-                    updatedClue.customClueTranslations = clue.clue.translatedClues || updatedClue.customClueTranslations;
+                    updatedClue.translatedClues = clue.clue.translatedClues || updatedClue.translatedClues;
                 }
                 await dao.updateSingleClue(updatedClue);
             } else {
                 // Step 3: Create new clue
-                let newClue = {
+                let newClue: CluePersisted = {
                     id: generateId(),
                     entry: {
                         entry: entryData.entry,
                         lang: entryData.lang,
                     },
+                    lang: entryData.lang,
                     customClue: clue.clue?.customClue,
                     customDisplayText: clue.clue?.customDisplayText,
                     source: clue.clue?.source,
-                    customClueTranslations: clue.clue?.translatedClues,
-                } as Clue;
+                    translatedClues: clue.clue?.translatedClues,
+                };
 
                 // Step 4: If there are senses for the entry, set the clue's sense to the entry's sense with commonness "primary"
                 if (hasSensesInDb || hasSensesInRequest) {
                     const allSenses = hasSensesInRequest ? sensesData : existingSenses;
-                    const primarySense = allSenses.find((s: any) => s.commonness === "primary");
+                    const primarySense = allSenses.find((s: Sense | any) => s.commonness === "primary");
                     if (primarySense) {
-                        newClue.sense = primarySense.id;
+                        newClue.sense = { id: primarySense.id, entry: newClue.entry } as Sense;
                     } else if (allSenses.length > 0) {
                         // If no primary, use the first sense
-                        newClue.sense = allSenses[0].id;
+                        const first = allSenses[0];
+                        newClue.sense = { id: first.id, entry: newClue.entry } as Sense;
                     }
                 }
 
                 await dao.addClueToCollection(collectionId, newClue);
-                clueWasCreated = true;
             }
 
             // Step 6: If there are no senses for the entry, add a record to the entry_queue table
@@ -132,4 +132,3 @@ export async function addCluesToCollection(req: Request, res: Response) {
         return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ message: "An error occurred while adding/updating the clue." });
     }
 }
-

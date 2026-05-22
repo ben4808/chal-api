@@ -1,8 +1,5 @@
-import { Entry } from "../models/Entry";
-import { Sense } from "../models/Sense";
-import { convertObjectToMap, displayTextToEntry, generateId, mapKeys } from "./utils";
-import { EntryTranslation } from "../models/EntryTranslation";
-import { ExampleSentence } from "../models/ExampleSentence";
+import { Entry, EntryTranslation, ExampleSentence, Sense } from 'cruzi-models';
+import { convertObjectToMap, displayTextToEntry, generateId, mapKeys, pickLocalizedText } from "./utils";
 import CruziDao from "../daos/CruziDao";
 
 export function convertTranslationsToModel(translationsObj: any): Map<string, EntryTranslation> {
@@ -12,7 +9,6 @@ export function convertTranslationsToModel(translationsObj: any): Map<string, En
     for (const lang of mapKeys(translationsMap)) {
         let naturalTranslations = translationsMap.get(lang)?.naturalTranslations || [];
         let colloquialTranslations = translationsMap.get(lang)?.colloquialTranslations || [];
-        let alternatives = translationsMap.get(lang)?.alternatives || [];
 
         output.set(lang, {
             naturalTranslations: naturalTranslations.map((t: any) => ({
@@ -21,11 +17,6 @@ export function convertTranslationsToModel(translationsObj: any): Map<string, En
                 displayText: t
             }) as Entry),
             colloquialTranslations: colloquialTranslations.map((t: any) => ({
-                entry: displayTextToEntry(t),
-                lang: lang,
-                displayText: t
-            }) as Entry),
-            alternatives: alternatives.map((t: any) => ({
                 entry: displayTextToEntry(t),
                 lang: lang,
                 displayText: t
@@ -43,10 +34,15 @@ export function convertExampleSentencesToModel(exampleSentencesObj: any, senseId
     let output: ExampleSentence[] = [];
 
     for (const exampleSentenceData of exampleSentencesObj) {
+        if (!exampleSentenceData || typeof exampleSentenceData !== "object") {
+            continue;
+        }
+        const { source_ai, id: existingId, ...langFields } = exampleSentenceData as Record<string, unknown>;
         let exampleSentence: ExampleSentence = {
-            id: generateId(),
+            id: (existingId as string) || generateId(),
             senseId: senseId,
-            translations: convertObjectToMap(exampleSentenceData),
+            translations: convertObjectToMap(langFields),
+            source_ai: source_ai as string | undefined,
         };
         output.push(exampleSentence);
     }
@@ -60,13 +56,14 @@ export async function processSenses(entry: Entry, sensesData: any[], dao: CruziD
     }
 
     for (const inputSense of sensesData) {
-        let senseId = generateId();
+        let senseId = inputSense.id || generateId();
         let sense = {
             id: senseId,
+            entry,
             partOfSpeech: inputSense.partOfSpeech,
             commonness: inputSense.commonness,
-            summary: convertObjectToMap(inputSense.summary),
-            definition: convertObjectToMap(inputSense.definition),
+            summary: pickLocalizedText(inputSense.summary),
+            definition: pickLocalizedText(inputSense.definition),
             exampleSentences: convertExampleSentencesToModel(inputSense.exampleSentences, senseId),
             translations: convertTranslationsToModel(inputSense.translations),
             sourceAi: inputSense.sourceAi,
@@ -81,7 +78,6 @@ export async function processSenses(entry: Entry, sensesData: any[], dao: CruziD
                 let translations = [
                     sense.translations.get(langGroup)?.naturalTranslations,
                     sense.translations.get(langGroup)?.colloquialTranslations,
-                    sense.translations.get(langGroup)?.alternatives,
                 ].flat().filter(t => t !== undefined);
 
                 for (const translation of translations) {

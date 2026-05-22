@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { Request, Response } from 'express'
 import { StatusCodes } from 'http-status-codes'
-import { UserResponse } from '../src/models/UserResponse'
+import { UserResponse } from 'cruzi-models'
 
 // Mock the CruziDao module
 vi.mock('../src/daos/CruziDao', () => {

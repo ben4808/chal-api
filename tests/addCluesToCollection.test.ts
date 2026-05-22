@@ -2,12 +2,20 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { Request, Response } from 'express'
 import { StatusCodes } from 'http-status-codes'
 
+vi.mock('../src/lib/entryProcessingUtils', () => ({
+  processSenses: vi.fn().mockResolvedValue(undefined),
+}))
+
 // Mock the CruziDao module
 vi.mock('../src/daos/CruziDao', () => {
   const mockInstance = {
     addOrUpdateEntries: vi.fn(),
     addOrUpdateSense: vi.fn(),
-    addClueToCollection: vi.fn()
+    addClueToCollection: vi.fn(),
+    getSensesForEntry: vi.fn(),
+    getClueByEntryInCollection: vi.fn(),
+    addToEntryInfoQueue: vi.fn(),
+    updateSingleClue: vi.fn(),
   }
   return {
     default: vi.fn(() => mockInstance)
@@ -19,11 +27,18 @@ vi.mock('../src/lib/utils', () => ({
   convertObjectToMap: vi.fn((obj) => new Map(Object.entries(obj || {}))),
   displayTextToEntry: vi.fn((text) => ({ entry: text, lang: 'en', displayText: text })),
   generateId: vi.fn(() => 'generated-id-123'),
-  mapKeys: vi.fn((map) => Array.from(map.keys()))
+  mapKeys: vi.fn((map) => Array.from(map.keys())),
+  pickLocalizedText: vi.fn((val) => {
+    if (val == null) return undefined
+    if (typeof val === 'string') return val
+    if (typeof val === 'object') return (val as { en?: string }).en ?? Object.values(val as object)[0]
+    return undefined
+  }),
 }))
 
 // Import after mocking
 import { addCluesToCollection } from '../src/handlers/addCluesToCollection'
+import { processSenses } from '../src/lib/entryProcessingUtils'
 import CruziDao from '../src/daos/CruziDao'
 
 describe('addCluesToCollection', () => {
@@ -49,6 +64,11 @@ describe('addCluesToCollection', () => {
     vi.mocked(mockDao.addOrUpdateEntries).mockResolvedValue(undefined)
     vi.mocked(mockDao.addOrUpdateSense).mockResolvedValue(undefined)
     vi.mocked(mockDao.addClueToCollection).mockResolvedValue(undefined)
+    vi.mocked(mockDao.getSensesForEntry).mockResolvedValue([])
+    vi.mocked(mockDao.getClueByEntryInCollection).mockResolvedValue(null)
+    vi.mocked(mockDao.addToEntryInfoQueue).mockResolvedValue(undefined)
+    vi.mocked(mockDao.updateSingleClue).mockResolvedValue(undefined as any)
+    vi.mocked(processSenses).mockResolvedValue(undefined)
     return mockDao
   }
 
@@ -79,9 +99,15 @@ describe('addCluesToCollection', () => {
       lang: 'en',
       rootEntry: 'test',
       displayText: 'test',
-      entryType: 'word'
+      entryType: 'word',
+      loadingStatus: 'Processing',
     }])
-    expect(mockDao.addClueToCollection).toHaveBeenCalledWith('collection-123', {})
+    expect(mockDao.addClueToCollection).toHaveBeenCalledWith('collection-123', {
+      id: 'generated-id-123',
+      entry: { entry: 'test', lang: 'en' },
+      lang: 'en',
+    })
+    expect(mockDao.addToEntryInfoQueue).toHaveBeenCalledWith('test', 'en')
   })
 
   it('should add clues with senses successfully', async () => {
@@ -98,8 +124,9 @@ describe('addCluesToCollection', () => {
         },
         senses: [
           {
+            id: 'sense-1',
             partOfSpeech: 'noun',
-            commonness: 5,
+            commonness: 'primary',
             summary: { en: 'A test item' },
             definition: { en: 'Something used for testing' },
             exampleSentences: [
@@ -109,7 +136,6 @@ describe('addCluesToCollection', () => {
               es: {
                 naturalTranslations: ['prueba'],
                 colloquialTranslations: ['test'],
-                alternatives: ['ensayo']
               }
             },
             sourceAi: 'test-ai'
@@ -125,9 +151,22 @@ describe('addCluesToCollection', () => {
 
     await addCluesToCollection(mockReq as Request, mockRes as Response)
 
-    expect(mockDao.addOrUpdateEntries).toHaveBeenCalled()
-    expect(mockDao.addOrUpdateSense).toHaveBeenCalled()
-    expect(mockDao.addClueToCollection).toHaveBeenCalledWith('collection-123', {})
+    expect(mockDao.addOrUpdateEntries).toHaveBeenCalledWith([{
+      entry: 'test',
+      lang: 'en',
+      rootEntry: 'test',
+      displayText: 'test',
+      entryType: 'word',
+      loadingStatus: 'Ready',
+    }])
+    expect(processSenses).toHaveBeenCalled()
+    expect(mockDao.addClueToCollection).toHaveBeenCalledWith('collection-123', {
+      id: 'generated-id-123',
+      entry: { entry: 'test', lang: 'en' },
+      lang: 'en',
+      sense: { id: 'sense-1', entry: { entry: 'test', lang: 'en' } },
+    })
+    expect(mockDao.addToEntryInfoQueue).not.toHaveBeenCalled()
   })
 
   it('should add clues with custom clue data successfully', async () => {
@@ -162,22 +201,14 @@ describe('addCluesToCollection', () => {
     expect(mockDao.addOrUpdateEntries).toHaveBeenCalled()
     expect(mockDao.addClueToCollection).toHaveBeenCalledWith('collection-123', {
       id: 'generated-id-123',
-      entry: {
-        entry: 'test',
-        lang: 'en'
-      },
-      customClue: {
-        customClue: 'A custom clue text',
-        customDisplayText: 'Custom Display',
-        senseId: 'sense-123',
-        source: 'custom-source',
-        translatedClues: { es: 'pista personalizada' }
-      },
+      entry: { entry: 'test', lang: 'en' },
+      lang: 'en',
+      customClue: 'A custom clue text',
       customDisplayText: 'Custom Display',
-      senseId: 'sense-123',
       source: 'custom-source',
-      translatedClues: { es: 'pista personalizada' }
+      translatedClues: { es: 'pista personalizada' },
     })
+    expect(mockDao.addToEntryInfoQueue).toHaveBeenCalledWith('test', 'en')
   })
 
   it('should return 400 when collectionId is missing', async () => {
@@ -291,6 +322,7 @@ describe('addCluesToCollection', () => {
 
     expect(mockDao.addOrUpdateEntries).toHaveBeenCalledTimes(2)
     expect(mockDao.addClueToCollection).toHaveBeenCalledTimes(2)
+    expect(mockDao.addToEntryInfoQueue).toHaveBeenCalledTimes(2)
   })
 
   it('should handle DAO errors gracefully', async () => {
@@ -326,7 +358,7 @@ describe('addCluesToCollection', () => {
   it('should handle sense processing errors gracefully', async () => {
     const error = new Error('Sense processing failed')
     const mockDao = createMockDao()
-    vi.mocked(mockDao.addOrUpdateSense).mockRejectedValue(error)
+    vi.mocked(processSenses).mockRejectedValueOnce(error)
     
     const clues = [
       {

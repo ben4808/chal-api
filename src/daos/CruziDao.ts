@@ -1,20 +1,23 @@
-import { deepConvertToObject } from "../lib/utils";
-import { Clue } from "../models/Clue";
-import { ClueCollection } from "../models/ClueCollection";
-import { Entry } from "../models/Entry";
-import { EntryQueryParams } from "../models/EntryQueryParams";
-import { Sense } from "../models/Sense";
-import { CollectionClueRow } from "../models/CollectionClueRow";
-import { ICruziDao } from "./ICruziDao";
+import { deepConvertToObject, pickLocalizedText } from "../lib/utils";
+import {
+    Clue,
+    ClueCollection,
+    CollectionClueRow,
+    Entry,
+    EntryQueryParams,
+    Sense,
+    User,
+} from 'cruzi-models';
+import { CluePersisted, ICruziDao } from "./ICruziDao";
 import { sqlQuery } from "./postgres";
 
 class CruziDao implements ICruziDao {
-    public async addClueToCollection(collectionId: string, clue: Clue): Promise<void> {
+    public async addClueToCollection(collectionId: string, clue: CluePersisted): Promise<void> {
         const clueData = {
             collection_id: collectionId,
             id: clue.id,
-            entry: clue.entry?.entry,
-            lang: clue.entry?.lang,
+            entry: clue.entry.entry,
+            lang: clue.lang,
             custom_clue: clue.customClue,
             custom_display_text: clue.customDisplayText,
             source: clue.source,
@@ -53,8 +56,8 @@ class CruziDao implements ICruziDao {
             id: sense.id,
             part_of_speech: sense.partOfSpeech,
             commonness: sense.commonness,
-            summary: sense.summary, // Map<lang, text>
-            definition: sense.definition, // Map<lang, text>
+            summary: sense.summary,
+            definition: sense.definition,
             example_sentences: sense.exampleSentences, // ExampleSentence[]
             translations: sense.translations, // Map<lang, EntryTranslation>
             source_ai: sense.sourceAi,
@@ -84,18 +87,25 @@ class CruziDao implements ICruziDao {
         return rawData.map((raw: any) => ({
             id: raw.id,
             title: raw.title,
+            lang: raw.lang ?? "en",
             author: raw.author,
             createdDate: new Date(raw.created_date),
             modifiedDate: raw.modified_date ? new Date(raw.modified_date) : new Date(raw.created_date),
             isPrivate: raw.is_private ?? false,
             metadata1: raw.metadata1,
             metadata2: raw.metadata2,
-            puzzle: {
-                id: raw.puzzle_id,
-                width: raw.width,
-                height: raw.height,
-                publication: raw.publication,
-            }
+            puzzle: raw.puzzle_id
+                ? {
+                      id: raw.puzzle_id,
+                      title: raw.title ?? "",
+                      publication: raw.publication,
+                      date,
+                      width: raw.width ?? 0,
+                      height: raw.height ?? 0,
+                      grid: [],
+                      entries: new Map(),
+                  }
+                : undefined,
         } as ClueCollection));
     }
 
@@ -117,7 +127,6 @@ class CruziDao implements ICruziDao {
             author: raw.author,
             lang: raw.lang,
             description: raw.description,
-            isCrosswordCollection: raw.is_crossword_collection || false,
             isPrivate: raw.is_private,
             createdDate: new Date(raw.created_date),
             modifiedDate: raw.modified_date ? new Date(raw.modified_date) : new Date(raw.created_date),
@@ -147,7 +156,6 @@ class CruziDao implements ICruziDao {
             author: raw.author,
             lang: raw.lang,
             description: raw.description,
-            isCrosswordCollection: raw.is_crossword_collection,
             isPrivate: raw.is_private,
             createdDate: new Date(raw.created_date),
             modifiedDate: raw.modified_date ? new Date(raw.modified_date) : new Date(raw.created_date),
@@ -240,34 +248,42 @@ class CruziDao implements ICruziDao {
         return clueIds.map((clueId: string) => {
             const raw = clueMap.get(clueId);
             if (!raw) {
-                // If a clue ID was not found, return a minimal clue object
                 return {
                     id: clueId,
+                    entry: { entry: "", lang: "" },
+                    lang: "",
                 } as Clue;
             }
 
+            const entryModel = {
+                entry: raw.entry,
+                lang: raw.lang,
+                displayText: raw.display_text,
+                loadingStatus: raw.loading_status,
+            } as Entry;
+
             return {
                 id: raw.id,
-                entry: raw.entry ? {
-                    entry: raw.entry,
-                    lang: raw.lang,
-                    displayText: raw.display_text,
-                    loadingStatus: raw.loading_status,
-                } as Entry : undefined,
-                sense: raw.sense ? {
-                    id: raw.sense.id,
-                    partOfSpeech: raw.sense.partOfSpeech,
-                    commonness: raw.sense.commonness,
-                    summary: raw.sense.summary,
-                    definition: raw.sense.definition,
-                    exampleSentences: transformExampleSentences(raw.sense.exampleSentences),
-                    familiarityScore: raw.sense.familiarityScore,
-                    qualityScore: raw.sense.qualityScore,
-                    sourceAi: raw.sense.sourceAi,
-                } as Sense : undefined,
+                entry: entryModel,
+                lang: raw.lang,
+                sense: raw.sense
+                    ? ({
+                          id: raw.sense.id,
+                          entry: entryModel,
+                          partOfSpeech: raw.sense.partOfSpeech,
+                          commonness: raw.sense.commonness,
+                          summary: pickLocalizedText(raw.sense.summary),
+                          definition: pickLocalizedText(raw.sense.definition),
+                          exampleSentences: transformExampleSentences(
+                              raw.sense.exampleSentences
+                          ) as Sense["exampleSentences"],
+                          familiarityScore: raw.sense.familiarityScore,
+                          qualityScore: raw.sense.qualityScore,
+                          sourceAi: raw.sense.sourceAi,
+                      } as Sense)
+                    : undefined,
                 customClue: raw.custom_clue,
                 customDisplayText: raw.custom_display_text,
-                source: raw.source,
                 progressData: raw.progress_data ? mapClueProgressData(raw.progress_data) : undefined,
             } as Clue;
         });
@@ -287,14 +303,14 @@ class CruziDao implements ICruziDao {
         const rawData = result[0].clues_json;
         return rawData.map((raw: any) => ({
             id: raw.id,
-            clue: raw.clue,
             entry: {
                 entry: raw.entry,
                 lang: raw.lang,
                 loadingStatus: raw.loading_status,
             } as Entry,
             lang: raw.lang,
-            source: raw.source,
+            customClue: raw.clue,
+            order: raw.collection_order,
             metadata1: raw.metadata1,
             metadata2: raw.metadata2,
             progressData: mapClueProgressData(raw.user_progress),
@@ -354,7 +370,7 @@ class CruziDao implements ICruziDao {
     }
 
     // Maps get_single_clue result to Clue
-    public async getSingleClue(clueId: string): Promise<Clue | null> {
+    public async getSingleClue(clueId: string): Promise<CluePersisted | null> {
         const result = await sqlQuery(true, 'get_single_clue', [
             { name: 'p_clue_id', value: clueId }
         ]);
@@ -364,28 +380,31 @@ class CruziDao implements ICruziDao {
         }
 
         const raw = result[0].get_single_clue;
+        const entryModel = {
+            entry: raw.entry,
+            lang: raw.lang,
+            loadingStatus: raw.loading_status,
+        } as Entry;
         return {
             id: raw.id,
             customClue: raw.custom_clue,
             customDisplayText: raw.custom_display_text,
-            entry: {
-                entry: raw.entry,
-                lang: raw.lang,
-                loadingStatus: raw.loading_status,
-            } as Entry,
+            entry: entryModel,
             lang: raw.lang,
-            sense: raw.sense_id,
+            sense: raw.sense_id
+                ? ({ id: raw.sense_id, entry: entryModel } as Sense)
+                : undefined,
             source: raw.source,
-        } as Clue;
+        } as CluePersisted;
     }
 
     // Calls upsert_single_clue
-    public async updateSingleClue(clue: Clue): Promise<Clue> {
+    public async updateSingleClue(clue: CluePersisted): Promise<CluePersisted> {
         const clueData = {
             id: clue.id,
-            entry: clue.entry?.entry,
-            lang: clue.entry?.lang,
-            sense_id: typeof clue.sense === 'string' ? clue.sense : (clue.sense as any)?.id,
+            entry: clue.entry.entry,
+            lang: clue.lang,
+            sense_id: clue.sense?.id,
             custom_clue: clue.customClue,
             custom_display_text: clue.customDisplayText,
             source: clue.source,
@@ -409,29 +428,40 @@ class CruziDao implements ICruziDao {
         }
 
         const raw = result[0].get_entry;
-        return {
+        const baseEntry: Entry = {
             entry: raw.entry,
             lang: raw.lang,
-            length: raw.length,
             displayText: raw.display_text,
             entryType: raw.entry_type,
             familiarityScore: raw.familiarity_score,
             qualityScore: raw.quality_score,
             loadingStatus: raw.loading_status,
-            senses: raw.senses ? raw.senses.map((sense: any) => ({
+        };
+
+        const sensesMap = new Map<string, Sense>();
+        for (const sense of raw.senses || []) {
+            sensesMap.set(sense.id, {
                 id: sense.id,
-                summary: sense.summary,
-                definition: sense.definition,
+                entry: baseEntry,
+                summary: pickLocalizedText(sense.summary),
+                definition: pickLocalizedText(sense.definition),
                 familiarityScore: sense.familiarity_score,
                 qualityScore: sense.quality_score,
                 sourceAi: sense.source_ai,
-                exampleSentences: sense.example_sentences ? sense.example_sentences.map((ex: any) => ({
+                exampleSentences: (sense.example_sentences || []).map((ex: any) => ({
                     id: ex.id,
-                    sentence: ex.sentence,
-                    translatedSentence: ex.translated_sentence,
-                    sourceAi: ex.source_ai,
-                })) : [],
-            })) : [],
+                    senseId: sense.id,
+                    translations: ex.sentence
+                        ? new Map([[raw.lang, ex.sentence]])
+                        : undefined,
+                    source_ai: ex.source_ai,
+                })),
+            } as Sense);
+        }
+
+        return {
+            ...baseEntry,
+            senses: sensesMap,
         } as Entry;
     }
 
@@ -458,7 +488,6 @@ class CruziDao implements ICruziDao {
         return result.map((raw: any) => ({
             entry: raw.entry,
             lang: raw.lang,
-            length: raw.length,
             displayText: raw.display_text,
             entryType: raw.entry_type,
             familiarityScore: raw.familiarity_score,
@@ -468,7 +497,7 @@ class CruziDao implements ICruziDao {
     }
 
     // Inserts a user if they don't already exist (based on id)
-    public async insertUserIfNotExists(user: { id: string; email: string; firstName?: string; lastName?: string; nativeLang?: string }): Promise<void> {
+    public async insertUserIfNotExists(user: User): Promise<void> {
         await sqlQuery(true, 'insert_user_if_not_exists', [
             { name: 'p_id', value: user.id },
             { name: 'p_email', value: user.email },
@@ -498,12 +527,15 @@ class CruziDao implements ICruziDao {
             return [];
         }
 
+        const entryModel = { entry, lang } as Entry;
+
         return result.map((row: any) => ({
             id: row.id,
+            entry: entryModel,
             partOfSpeech: row.part_of_speech,
             commonness: row.commonness,
-            summary: deepConvertToObject(row.summary),
-            definition: deepConvertToObject(row.definition),
+            summary: pickLocalizedText(deepConvertToObject(row.summary)),
+            definition: pickLocalizedText(deepConvertToObject(row.definition)),
             exampleSentences: row.example_sentences || [],
             translations: deepConvertToObject(row.translations),
             sourceAi: row.source_ai,
@@ -511,7 +543,7 @@ class CruziDao implements ICruziDao {
     }
 
     // Gets a clue by entry in a specific collection
-    public async getClueByEntryInCollection(collectionId: string, entry: string, lang: string): Promise<Clue | null> {
+    public async getClueByEntryInCollection(collectionId: string, entry: string, lang: string): Promise<CluePersisted | null> {
         const result = await sqlQuery(true, 'get_clue_by_entry_in_collection', [
             { name: 'p_collection_id', value: collectionId },
             { name: 'p_entry', value: entry },
@@ -522,19 +554,21 @@ class CruziDao implements ICruziDao {
             return null;
         }
 
-        const row = result[0][0]; // result[0] is the array returned by the function, result[0][0] is the clue object
+        const row = result[0].get_clue_by_entry_in_collection[0];
+        const entryModel = {
+            entry: row.entry,
+            lang: row.lang,
+        } as Entry;
         return {
             id: row.id,
-            entry: {
-                entry: row.entry,
-                lang: row.lang,
-            },
-            sense: row.sense_id,
+            entry: entryModel,
+            lang: row.lang,
+            sense: row.sense_id ? ({ id: row.sense_id, entry: entryModel } as Sense) : undefined,
             customClue: row.custom_clue,
             customDisplayText: row.custom_display_text,
             source: row.source,
             translatedClues: deepConvertToObject(row.translated_clues),
-        } as Clue;
+        } as CluePersisted;
     }
 
     // Adds an entry to the entry info queue
@@ -553,7 +587,8 @@ const mapCreator = (creator: any) => {
         id: creator.creator_id,
         firstName: creator.creator_first_name,
         lastName: creator.creator_last_name,
-        email: creator.email || undefined,
+        email: creator.email ?? "",
+        createdAt: creator.created_at ? new Date(creator.created_at) : undefined,
     };
 };
 
@@ -573,10 +608,12 @@ const mapCollectionProgressData = (progress: any, userId?: string, collectionId?
 const mapClueProgressData = (progress: any) => {
     if (!progress) return undefined;
     return {
-        correctSolvesNeeded: progress.correct_solves_needed,
-        correctSolves: progress.correct_solves,
-        incorrectSolves: progress.incorrect_solves,
-        lastSolve: progress.last_solve ? new Date(progress.last_solve) : undefined,
+        userId: progress.user_id ?? "",
+        clueId: progress.clue_id ?? "",
+        correctSolvesNeeded: progress.correct_solves_needed ?? 0,
+        correctSolves: progress.correct_solves ?? 0,
+        incorrectSolves: progress.incorrect_solves ?? 0,
+        lastSolveDate: progress.last_solve ? new Date(progress.last_solve) : undefined,
     };
 };
 

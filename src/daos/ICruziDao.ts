@@ -1,11 +1,16 @@
-import { Clue } from "../models/Clue";
-import { ClueCollection } from "../models/ClueCollection";
-import { Entry } from "../models/Entry";
-import { EntryQueryParams } from "../models/EntryQueryParams";
-import { Sense } from "../models/Sense";
-import { UserResponse } from "../models/UserResponse";
-import { CollectionClueRow } from "../models/CollectionClueRow";
-import { User } from "../models/User";
+import {
+    Clue,
+    ClueCollection,
+    CluePersisted,
+    CollectionClueRow,
+    Entry,
+    EntryQueryParams,
+    Sense,
+    User,
+    UserResponse,
+} from 'cruzi-models';
+
+export type { CluePersisted } from 'cruzi-models';
 
 export interface ICruziDao {
   getCrosswordList(date: Date): Promise<ClueCollection[]>;
@@ -28,17 +33,17 @@ export interface ICruziDao {
   submitUserResponse(userId: string, response: UserResponse): Promise<void>;
   reopenCollection(userId: string, collectionId: string): Promise<void>;
 
-  addClueToCollection(collectionId: string, clue: Clue): Promise<void>;
+  addClueToCollection(collectionId: string, clue: CluePersisted): Promise<void>;
   removeClueFromCollection(collectionId: string, clueId: string): Promise<void>;
   addOrUpdateEntries(entries: Entry[]): Promise<void>;
   addOrUpdateSense(entry: Entry, sense: Sense): Promise<void>;
 
-  getSingleClue(clueId: string): Promise<Clue | null>;
-  updateSingleClue(clue: Clue): Promise<Clue>;
+  getSingleClue(clueId: string): Promise<CluePersisted | null>;
+  updateSingleClue(clue: CluePersisted): Promise<CluePersisted>;
 
   getEntry(entry: string): Promise<Entry | null>;
   getSensesForEntry(entry: string, lang: string): Promise<Sense[]>;
-  getClueByEntryInCollection(collectionId: string, entry: string, lang: string): Promise<Clue | null>;
+  getClueByEntryInCollection(collectionId: string, entry: string, lang: string): Promise<CluePersisted | null>;
   addToEntryInfoQueue(entry: string, lang: string): Promise<void>;
 
   queryEntries(params: EntryQueryParams): Promise<Entry[]>;
