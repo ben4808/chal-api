@@ -3,7 +3,7 @@ import { Request, Response } from 'express'
 import { StatusCodes } from 'http-status-codes'
 
 // Mock the CruziDao module
-vi.mock('../src/daos/CruziDao', () => {
+vi.mock('cruzi-db', () => {
   const mockInstance = {
     selectCollectionBatch: vi.fn(),
     populateCollectionBatch: vi.fn(),
@@ -16,7 +16,7 @@ vi.mock('../src/daos/CruziDao', () => {
 
 // Import after mocking
 import { getCollectionBatch } from '../src/handlers/getCollectionBatch'
-import CruziDao from '../src/daos/CruziDao'
+import CruziDao from 'cruzi-db'
 
 describe('getCollectionBatch', () => {
   let mockReq: Partial<Request>
@@ -37,8 +37,8 @@ describe('getCollectionBatch', () => {
   it('should return collection batch successfully', async () => {
     const mockClueIds = ['clue-1', 'clue-2']
     const mockBatch = [
-      { id: 'clue-1', entry: { entry: 'test', lang: 'en' } },
-      { id: 'clue-2', entry: { entry: 'example', lang: 'en' } }
+      { id: 'clue-1', entry: { entry: 'test', lang: 'en' }, lang: 'en' },
+      { id: 'clue-2', entry: { entry: 'example', lang: 'en' }, lang: 'en' }
     ]
     const mockDao = new CruziDao()
     vi.mocked(mockDao.selectCollectionBatch).mockResolvedValue(mockClueIds)
@@ -61,7 +61,7 @@ describe('getCollectionBatch', () => {
 
   it('should handle request without userId', async () => {
     const mockClueIds = ['clue-1']
-    const mockBatch = [{ id: 'clue-1', entry: { entry: 'test', lang: 'en' } }]
+    const mockBatch = [{ id: 'clue-1', entry: { entry: 'test', lang: 'en' }, lang: 'en' }]
     const mockDao = new CruziDao()
     vi.mocked(mockDao.selectCollectionBatch).mockResolvedValue(mockClueIds)
     vi.mocked(mockDao.populateCollectionBatch).mockResolvedValue(mockBatch)

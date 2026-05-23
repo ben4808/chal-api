@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { StatusCodes } from 'http-status-codes';
-import CruziDao from "../daos/CruziDao";
+import CruziDao from "cruzi-db";
 import { Entry } from 'cruzi-models';
 import { processSenses } from "../lib/entryProcessingUtils";
 

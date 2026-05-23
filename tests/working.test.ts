@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 
 // Mock the CruziDao module with a simple approach
-vi.mock('../src/daos/CruziDao', () => {
+vi.mock('cruzi-db', () => {
   const mockInstance = {
     selectCollectionBatch: vi.fn(),
     populateCollectionBatch: vi.fn(),
@@ -16,7 +16,7 @@ vi.mock('../src/daos/CruziDao', () => {
 import { getCollectionBatch } from '../src/handlers/getCollectionBatch'
 import { Request, Response } from 'express'
 import { StatusCodes } from 'http-status-codes'
-import CruziDao from '../src/daos/CruziDao'
+import CruziDao from 'cruzi-db'
 
 describe('Working Test', () => {
   it('should work', () => {
@@ -25,7 +25,7 @@ describe('Working Test', () => {
 
   it('should test getCollectionBatch', async () => {
     const mockClueIds = ['clue-1']
-    const mockBatch = [{ id: 'clue-1', entry: { entry: 'test', lang: 'en' } }]
+    const mockBatch = [{ id: 'clue-1', entry: { entry: 'test', lang: 'en' }, lang: 'en' }]
 
     // Create a new instance to get the mock
     const mockDao = new CruziDao()

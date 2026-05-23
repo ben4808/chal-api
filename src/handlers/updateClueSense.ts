@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { StatusCodes } from 'http-status-codes';
-import CruziDao from "../daos/CruziDao";
-import { CluePersisted } from "../daos/ICruziDao";
+import CruziDao from "cruzi-db";
+import { CluePersisted } from "cruzi-db";
 import { Sense } from 'cruzi-models';
 
 let dao = new CruziDao();

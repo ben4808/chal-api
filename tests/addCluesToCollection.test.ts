@@ -7,7 +7,7 @@ vi.mock('../src/lib/entryProcessingUtils', () => ({
 }))
 
 // Mock the CruziDao module
-vi.mock('../src/daos/CruziDao', () => {
+vi.mock('cruzi-db', () => {
   const mockInstance = {
     addOrUpdateEntries: vi.fn(),
     addOrUpdateSense: vi.fn(),
@@ -39,7 +39,7 @@ vi.mock('../src/lib/utils', () => ({
 // Import after mocking
 import { addCluesToCollection } from '../src/handlers/addCluesToCollection'
 import { processSenses } from '../src/lib/entryProcessingUtils'
-import CruziDao from '../src/daos/CruziDao'
+import CruziDao from 'cruzi-db'
 
 describe('addCluesToCollection', () => {
   let mockReq: Partial<Request>

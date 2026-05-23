@@ -1,27 +1,31 @@
 import { Entry, EntryTranslation, ExampleSentence, Sense } from 'cruzi-models';
-import { convertObjectToMap, displayTextToEntry, generateId, mapKeys, pickLocalizedText } from "./utils";
-import CruziDao from "../daos/CruziDao";
+import { displayTextToEntry, generateId, pickLocalizedText } from "./utils";
+import CruziDao from "cruzi-db";
 
-export function convertTranslationsToModel(translationsObj: any): Map<string, EntryTranslation> {
-    let translationsMap = convertObjectToMap(translationsObj);
-    let output = new Map<string, EntryTranslation>();
+export function convertTranslationsToModel(translationsObj: any): Record<string, EntryTranslation> {
+    if (!translationsObj || typeof translationsObj !== 'object') {
+        return {};
+    }
 
-    for (const lang of mapKeys(translationsMap)) {
-        let naturalTranslations = translationsMap.get(lang)?.naturalTranslations || [];
-        let colloquialTranslations = translationsMap.get(lang)?.colloquialTranslations || [];
+    const output: Record<string, EntryTranslation> = {};
 
-        output.set(lang, {
+    for (const lang of Object.keys(translationsObj)) {
+        const translation = translationsObj[lang];
+        const naturalTranslations = translation?.naturalTranslations || [];
+        const colloquialTranslations = translation?.colloquialTranslations || [];
+
+        output[lang] = {
             naturalTranslations: naturalTranslations.map((t: any) => ({
                 entry: displayTextToEntry(t),
-                lang: lang,
-                displayText: t
+                lang,
+                displayText: t,
             }) as Entry),
             colloquialTranslations: colloquialTranslations.map((t: any) => ({
                 entry: displayTextToEntry(t),
-                lang: lang,
-                displayText: t
+                lang,
+                displayText: t,
             }) as Entry),
-        } as EntryTranslation);
+        };
     }
 
     return output;
@@ -31,20 +35,19 @@ export function convertExampleSentencesToModel(exampleSentencesObj: any, senseId
     if (!exampleSentencesObj || !Array.isArray(exampleSentencesObj)) {
         return [];
     }
-    let output: ExampleSentence[] = [];
+    const output: ExampleSentence[] = [];
 
     for (const exampleSentenceData of exampleSentencesObj) {
         if (!exampleSentenceData || typeof exampleSentenceData !== "object") {
             continue;
         }
-        const { source_ai, id: existingId, ...langFields } = exampleSentenceData as Record<string, unknown>;
-        let exampleSentence: ExampleSentence = {
+        const { source_ai, sourceAi, id: existingId, ...langFields } = exampleSentenceData as Record<string, unknown>;
+        output.push({
             id: (existingId as string) || generateId(),
-            senseId: senseId,
-            translations: convertObjectToMap(langFields),
-            source_ai: source_ai as string | undefined,
-        };
-        output.push(exampleSentence);
+            senseId,
+            translations: langFields as Record<string, string>,
+            sourceAi: (sourceAi ?? source_ai) as string | undefined,
+        });
     }
 
     return output;
@@ -56,8 +59,8 @@ export async function processSenses(entry: Entry, sensesData: any[], dao: CruziD
     }
 
     for (const inputSense of sensesData) {
-        let senseId = inputSense.id || generateId();
-        let sense = {
+        const senseId = inputSense.id || generateId();
+        const sense: Sense = {
             id: senseId,
             entry,
             partOfSpeech: inputSense.partOfSpeech,
@@ -67,21 +70,21 @@ export async function processSenses(entry: Entry, sensesData: any[], dao: CruziD
             exampleSentences: convertExampleSentencesToModel(inputSense.exampleSentences, senseId),
             translations: convertTranslationsToModel(inputSense.translations),
             sourceAi: inputSense.sourceAi,
-        } as Sense;
+        };
 
         await dao.addOrUpdateSense(entry, sense);
 
-        // Add entries for all translations of the entry
-        let entriesToAdd: Entry[] = [];
+        const entriesToAdd: Entry[] = [];
         if (sense.translations) {
-            for (const langGroup of mapKeys(sense.translations)) {
-                let translations = [
-                    sense.translations.get(langGroup)?.naturalTranslations,
-                    sense.translations.get(langGroup)?.colloquialTranslations,
-                ].flat().filter(t => t !== undefined);
+            for (const langGroup of Object.keys(sense.translations)) {
+                const translationGroup = sense.translations[langGroup];
+                const translations = [
+                    ...(translationGroup?.naturalTranslations || []),
+                    ...(translationGroup?.colloquialTranslations || []),
+                ];
 
                 for (const translation of translations) {
-                    entriesToAdd.push(translation);
+                    entriesToAdd.push(translation as Entry);
                 }
             }
             if (entriesToAdd.length > 0) {

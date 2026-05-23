@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import CruziDao from "../daos/CruziDao";
+import CruziDao from "cruzi-db";
 import { StatusCodes } from 'http-status-codes';
 
 let dao = new CruziDao();

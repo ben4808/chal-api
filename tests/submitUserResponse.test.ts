@@ -1,10 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { Request, Response } from 'express'
 import { StatusCodes } from 'http-status-codes'
-import { UserResponse } from 'cruzi-models'
 
 // Mock the CruziDao module
-vi.mock('../src/daos/CruziDao', () => {
+vi.mock('cruzi-db', () => {
   const mockInstance = {
     submitUserResponse: vi.fn()
   }
@@ -15,7 +14,7 @@ vi.mock('../src/daos/CruziDao', () => {
 
 // Import after mocking
 import { submitUserResponse } from '../src/handlers/submitUserResponse'
-import CruziDao from '../src/daos/CruziDao'
+import CruziDao from 'cruzi-db'
 
 describe('submitUserResponse', () => {
   let mockReq: Partial<Request>
@@ -43,11 +42,11 @@ describe('submitUserResponse', () => {
   it('should submit user response successfully', async () => {
     const mockDao = createMockDao()
     
-    const userResponse: UserResponse = {
-      userId: '', // Will be set by the handler
+    const userResponse = {
+      userId: '',
       clueId: 'clue-123',
       collectionId: 'collection-123',
-      isCorrect: true
+      isCorrect: true,
     }
     
     mockReq = {
@@ -72,11 +71,11 @@ describe('submitUserResponse', () => {
   it('should submit incorrect user response successfully', async () => {
     const mockDao = createMockDao()
     
-    const userResponse: UserResponse = {
+    const userResponse = {
       userId: '',
       clueId: 'clue-456',
       collectionId: 'collection-456',
-      isCorrect: false
+      isCorrect: false,
     }
     
     mockReq = {
@@ -220,11 +219,11 @@ describe('submitUserResponse', () => {
     const mockDao = createMockDao()
     vi.mocked(mockDao.submitUserResponse).mockRejectedValue(error)
     
-    const userResponse: UserResponse = {
+    const userResponse = {
       userId: '',
       clueId: 'clue-123',
       collectionId: 'collection-123',
-      isCorrect: true
+      isCorrect: true,
     }
     
     mockReq = {

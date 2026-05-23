@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, vi } from 'vitest'
 
-// Mock the CruziDao module
-vi.mock('../src/daos/CruziDao', () => ({
+vi.mock('cruzi-db', () => ({
   default: vi.fn().mockImplementation(() => ({
     addClueToCollection: vi.fn(),
     removeClueFromCollection: vi.fn(),
@@ -14,15 +13,10 @@ vi.mock('../src/daos/CruziDao', () => ({
     getCrosswordList: vi.fn(),
     reopenCollection: vi.fn(),
     submitUserResponse: vi.fn(),
-  }))
+  })),
+  sqlQuery: vi.fn(),
 }))
 
-// Mock the postgres module
-vi.mock('../src/daos/postgres', () => ({
-  sqlQuery: vi.fn()
-}))
-
-// Mock console.error to avoid noise in tests
 const originalConsoleError = console.error
 beforeEach(() => {
   console.error = vi.fn()

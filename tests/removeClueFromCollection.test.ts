@@ -3,7 +3,7 @@ import { Request, Response } from 'express'
 import { StatusCodes } from 'http-status-codes'
 
 // Mock the CruziDao module
-vi.mock('../src/daos/CruziDao', () => {
+vi.mock('cruzi-db', () => {
   const mockInstance = {
     removeClueFromCollection: vi.fn()
   }
@@ -14,7 +14,7 @@ vi.mock('../src/daos/CruziDao', () => {
 
 // Import after mocking
 import { removeClueFromCollection } from '../src/handlers/removeClueFromCollection'
-import CruziDao from '../src/daos/CruziDao'
+import CruziDao from 'cruzi-db'
 
 describe('removeClueFromCollection', () => {
   let mockReq: Partial<Request>

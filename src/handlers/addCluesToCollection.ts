@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
 import { StatusCodes } from 'http-status-codes';
-import CruziDao from "../daos/CruziDao";
+import CruziDao from "cruzi-db";
 import { Entry, Sense } from 'cruzi-models';
-import { CluePersisted } from "../daos/ICruziDao";
+import { CluePersisted } from "cruzi-db";
 import { generateId } from "../lib/utils";
 import { processSenses } from "../lib/entryProcessingUtils";
 

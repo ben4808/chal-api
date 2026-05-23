@@ -3,7 +3,7 @@ import { Request, Response } from 'express'
 import { StatusCodes } from 'http-status-codes'
 
 // Mock the CruziDao module
-vi.mock('../src/daos/CruziDao', () => {
+vi.mock('cruzi-db', () => {
   const mockInstance = {
     getCollectionList: vi.fn()
   }
@@ -14,7 +14,7 @@ vi.mock('../src/daos/CruziDao', () => {
 
 // Import after mocking
 import { getCollectionList } from '../src/handlers/getCollectionList'
-import CruziDao from '../src/daos/CruziDao'
+import CruziDao from 'cruzi-db'
 
 describe('getCollectionList', () => {
   let mockReq: Partial<Request>

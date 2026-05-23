@@ -3,7 +3,7 @@ import { OAuth2Client } from 'google-auth-library';
 import { StatusCodes } from 'http-status-codes';
 import { generateJWT } from '../lib/jwt';
 import { User } from 'cruzi-models';
-import CruziDao from '../daos/CruziDao';
+import CruziDao from 'cruzi-db';
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || 'your-google-client-id';
 const client = new OAuth2Client(GOOGLE_CLIENT_ID);
