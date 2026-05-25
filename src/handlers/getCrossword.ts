@@ -2,29 +2,40 @@ import { Request, Response } from "express";
 import { StatusCodes } from 'http-status-codes';
 import CruziDao from "cruzi-db";
 
-let dao = new CruziDao();
+const dao = new CruziDao();
 
 /*
-Write an Express handler getCrossword that retrieves info about a specific crossword puzzle.
+Retrieves info about a specific crossword puzzle.
 It should accept a request with the following parameters:
 - `id`: The ID of the clue collection of the crossword puzzle to retrieve.
-It should return a JSON response with the list of clues in the crossword clue collection.
-- The response should adhere to the structure defined in the Clue interface.
+- `userId`: The ID of the user to retrieve the crossword puzzle for. (from middleware)
+Returns a clue collection for the crossword populated with clues (CollectionClueWithProgress), and if
+  there is a userId, progress data for the clues.
 The handler should handle errors gracefully and return appropriate HTTP status codes.
 */
 
 export async function getCrossword(req: Request, res: Response) {
     try {
-        const date = req.query.date ? new Date(req.query.date as string) : new Date();
-        const crosswords = await dao.getCrosswordList(date);
+        const id = req.query.id as string | undefined;
+        const userId = (req as any).userId as string | undefined;
 
-        if (!crosswords || crosswords.length === 0) {
-            return res.status(StatusCodes.NOT_FOUND).json({ message: "No crosswords found for the specified date." });
+        if (!id) {
+            return res.status(StatusCodes.BAD_REQUEST).json({ message: "id query parameter is required." });
         }
 
-        return res.status(StatusCodes.OK).json(crosswords);
+        const crossword = await dao.getCrossword(id, userId);
+
+        if (!crossword) {
+            return res.status(StatusCodes.NOT_FOUND).json({
+                message: "Crossword not found or access denied.",
+            });
+        }
+
+        return res.status(StatusCodes.OK).json(crossword);
     } catch (error) {
-        console.error("Error retrieving crossword list:", error);
-        return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ message: "An error occurred while retrieving the crossword list." });
+        console.error("Error retrieving crossword:", error);
+        return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+            message: "An error occurred while retrieving the crossword.",
+        });
     }
 }

@@ -5,11 +5,11 @@ import CruziDao from "cruzi-db";
 let dao = new CruziDao();
 
 /*
-Write an Express handler getCrosswordList that retrieves a list of crossword puzzles.
-It should accept a request with the following parameters:
-- `date`: A date string to filter the crosswords by their creation date.
-It should return a JSON response with the list of crosswords as clue collections.
-- The response should adhere to the structure defined in the ClueCollection interface. The User field will be null.
+Retrieves a list of crossword puzzles for a given date, optionally with progress data for the logged in user.
+Accepts a date parameter.
+Also accepts a userId parameter from middleware if a user is logged in.
+
+Returns a JSON response with the list of crosswords as ClueCollection objects.
 The handler should handle errors gracefully and return appropriate HTTP status codes.
 */
 

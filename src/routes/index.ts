@@ -15,6 +15,8 @@ import { verifyAuth } from '../handlers/verifyAuth';
 import { upsertEntryInformation } from '../handlers/upsertEntryInformation';
 import { updateClueSense } from '../handlers/updateClueSense';
 import { makeAICall } from '../handlers/makeAICall';
+import { getCrosswordCalendar } from '../handlers/getCrosswordCalendar';
+import { submitCrosswordResponse } from '../handlers/submitCrosswordResponse';
 import { vpcOnly } from '../middleware/vpcOnly';
 
 const apiRouter = Router();
@@ -24,13 +26,16 @@ apiRouter.post('/auth/google', handleGoogleAuth);
 apiRouter.get('/auth/verify', verifyAuth);
 
 apiRouter.get('/getCrosswordList', authenticateOptional, getCrosswordList);
+apiRouter.get('/getCrosswordCalendar', authenticateOptional, getCrosswordCalendar);
+apiRouter.get('/getCrossword', authenticateOptional, getCrossword);
+apiRouter.post('/submitCrosswordResponse', requireAuth, submitCrosswordResponse);
+
 apiRouter.get('/getCollectionList', authenticateOptional, getCollectionList);
 apiRouter.get('/getCollectionById/:id', authenticateOptional, getCollectionById);
-apiRouter.get('/getCrossword', authenticateOptional, getCrossword);
 apiRouter.get('/getCollectionBatch', authenticateOptional, getCollectionBatch);
 apiRouter.get('/getCollectionClues', authenticateOptional, getCollectionClues);
-apiRouter.post('/submitUserResponse', requireAuth, submitUserResponse);
 apiRouter.post('/reopenCollection', requireAuth, reopenCollection);
+apiRouter.post('/submitUserResponse', requireAuth, submitUserResponse);
 //apiRouter.get('/getClue', getClue);
 //apiRouter.get('/getEntry', getEntry);
 //apiRouter.get('/generateEntryInfo', generateEntryInfo);
