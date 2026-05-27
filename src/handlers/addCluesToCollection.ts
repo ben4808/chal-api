@@ -1,8 +1,7 @@
 import { Request, Response } from "express";
 import { StatusCodes } from 'http-status-codes';
 import CruziDao from "cruzi-db";
-import { Entry, Sense } from 'cruzi-models';
-import { CluePersisted } from "cruzi-db";
+import { Entry, Sense, Clue, SenseRef } from 'cruzi-models';
 import { generateId } from "../lib/utils";
 import { processSenses } from "../lib/entryProcessingUtils";
 
@@ -81,17 +80,15 @@ export async function addCluesToCollection(req: Request, res: Response) {
 
             if (existingClue) {
                 // Update existing clue with new information
-                const updatedClue: CluePersisted = { ...existingClue };
+                const updatedClue: Clue = { ...existingClue };
                 if (clue.clue) {
                     updatedClue.customClue = clue.clue.customClue || updatedClue.customClue;
                     updatedClue.customDisplayText = clue.clue.customDisplayText || updatedClue.customDisplayText;
-                    updatedClue.source = clue.clue.source || updatedClue.source;
-                    updatedClue.translatedClues = clue.clue.translatedClues || updatedClue.translatedClues;
                 }
                 await dao.updateSingleClue(updatedClue);
             } else {
                 // Step 3: Create new clue
-                let newClue: CluePersisted = {
+                let newClue: Clue = {
                     id: generateId(),
                     entry: {
                         entry: entryData.entry,
@@ -100,8 +97,6 @@ export async function addCluesToCollection(req: Request, res: Response) {
                     lang: entryData.lang,
                     customClue: clue.clue?.customClue,
                     customDisplayText: clue.clue?.customDisplayText,
-                    source: clue.clue?.source,
-                    translatedClues: clue.clue?.translatedClues,
                 };
 
                 // Step 4: If there are senses for the entry, set the clue's sense to the entry's sense with commonness "primary"
@@ -109,11 +104,11 @@ export async function addCluesToCollection(req: Request, res: Response) {
                     const allSenses = hasSensesInRequest ? sensesData : existingSenses;
                     const primarySense = allSenses.find((s: Sense | any) => s.commonness === "primary");
                     if (primarySense) {
-                        newClue.sense = { id: primarySense.id, entry: newClue.entry } as Sense;
+                        newClue.sense = { id: primarySense.id!, entry: newClue.entry } as SenseRef;
                     } else if (allSenses.length > 0) {
                         // If no primary, use the first sense
                         const first = allSenses[0];
-                        newClue.sense = { id: first.id, entry: newClue.entry } as Sense;
+                        newClue.sense = { id: first.id!, entry: newClue.entry } as SenseRef;
                     }
                 }
 

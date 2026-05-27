@@ -1,11 +1,16 @@
 /*
 Retrieves a month of hints data for the logged in user for a particular publication.
 
+If no logged in user, return nothing.
+
 Input: month and year from query params (formatted as MM-YYYY), userId from middleware, publicationId from query params
 Output: Array of objects with the following properties:
 - date: string (formatted as YYYY-MM-DD)
-- hints: number
-- hints_used: number
+- progress_state: string (one of 'completed', 'in_progress')
+- hints_used: number from user__collection.hints_used
+
+If there is no user__collection for the user and publication on that day, don't return a result for that day. If there is 
+a user__collection but the collection_completed is false, return 'in_progress'. If the collection_completed is true, return 'completed'.
 */
 
 import { Request, Response } from 'express';
@@ -49,6 +54,10 @@ export async function getCrosswordCalendar(req: Request, res: Response) {
         }
 
         const userId = (req as any).userId as string | undefined;
+        if (!userId) {
+            return res.status(StatusCodes.OK).json([]);
+        }
+
         const calendar = await dao.getCrosswordCalendar(
             publicationId,
             parsed.month,

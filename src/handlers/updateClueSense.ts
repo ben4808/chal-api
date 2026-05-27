@@ -1,8 +1,7 @@
 import { Request, Response } from "express";
 import { StatusCodes } from 'http-status-codes';
 import CruziDao from "cruzi-db";
-import { CluePersisted } from "cruzi-db";
-import { Sense } from 'cruzi-models';
+import { Clue, SenseRef } from 'cruzi-models';
 
 let dao = new CruziDao();
 
@@ -35,9 +34,9 @@ export async function updateClueSense(req: Request, res: Response) {
         }
 
         // Update the clue with the new sense
-        const updatedClue: CluePersisted = {
+        const updatedClue: Clue = {
             ...existingClue,
-            sense: senseId ? ({ id: senseId, entry: existingClue.entry } as Sense) : undefined,
+            sense: senseId ? ({ id: senseId!, entry: existingClue.entry } as SenseRef) : undefined,
         };
 
         await dao.updateSingleClue(updatedClue);
