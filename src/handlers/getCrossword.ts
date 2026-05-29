@@ -4,26 +4,88 @@ import CruziDao from "cruzi-db";
 
 const dao = new CruziDao();
 
+function parseCrosswordDateParam(dateParam: string): Date | null {
+    const isoMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateParam);
+    if (isoMatch) {
+        const year = parseInt(isoMatch[1], 10);
+        const month = parseInt(isoMatch[2], 10) - 1;
+        const day = parseInt(isoMatch[3], 10);
+        const date = new Date(year, month, day);
+        if (date.getFullYear() === year && date.getMonth() === month && date.getDate() === day) {
+            return date;
+        }
+        return null;
+    }
+
+    const usDashMatch = /^(\d{2})-(\d{2})-(\d{4})$/.exec(dateParam);
+    if (usDashMatch) {
+        const month = parseInt(usDashMatch[1], 10) - 1;
+        const day = parseInt(usDashMatch[2], 10);
+        const year = parseInt(usDashMatch[3], 10);
+        const date = new Date(year, month, day);
+        if (date.getFullYear() === year && date.getMonth() === month && date.getDate() === day) {
+            return date;
+        }
+        return null;
+    }
+
+    const slashParts = dateParam.split('/');
+    if (slashParts.length === 3) {
+        const month = parseInt(slashParts[0], 10) - 1;
+        const day = parseInt(slashParts[1], 10);
+        const year = parseInt(slashParts[2], 10);
+        if (Number.isNaN(month) || Number.isNaN(day) || Number.isNaN(year)) {
+            return null;
+        }
+        const date = new Date(year, month, day);
+        if (date.getFullYear() === year && date.getMonth() === month && date.getDate() === day) {
+            return date;
+        }
+    }
+
+    return null;
+}
+
 /*
 Retrieves info about a specific crossword puzzle.
-It should accept a request with the following parameters:
-- `id`: The ID of the clue collection of the crossword puzzle to retrieve.
-- `userId`: The ID of the user to retrieve the crossword puzzle for. (from middleware)
-Returns a clue collection for the crossword populated with clues (CollectionClueWithProgress), and if
-  there is a userId, progress data for the clues.
-The handler should handle errors gracefully and return appropriate HTTP status codes.
+Accepts either:
+- `id`: The clue collection ID of the crossword to retrieve.
+- `publicationId` and `date`: Look up the crossword by publication and puzzle date.
+Optional `userId` from auth middleware for progress data.
 */
 
 export async function getCrossword(req: Request, res: Response) {
     try {
         const id = req.query.id as string | undefined;
+        const publicationId = req.query.publicationId as string | undefined;
+        const dateParam = req.query.date as string | undefined;
         const userId = (req as any).userId as string | undefined;
 
-        if (!id) {
-            return res.status(StatusCodes.BAD_REQUEST).json({ message: "id query parameter is required." });
+        let collectionId = id;
+
+        if (!collectionId) {
+            if (!publicationId || !dateParam) {
+                return res.status(StatusCodes.BAD_REQUEST).json({
+                    message: "Provide either id, or both publicationId and date query parameters.",
+                });
+            }
+
+            const date = parseCrosswordDateParam(dateParam);
+            if (!date) {
+                return res.status(StatusCodes.BAD_REQUEST).json({
+                    message: "date must be formatted as YYYY-MM-DD, MM-DD-YYYY, or MM/DD/YYYY.",
+                });
+            }
+
+            collectionId = await dao.getCrosswordCollectionId(publicationId, date) ?? undefined;
+            if (!collectionId) {
+                return res.status(StatusCodes.NOT_FOUND).json({
+                    message: "Crossword not found for the specified publication and date.",
+                });
+            }
         }
 
-        const crossword = await dao.getCrossword(id, userId);
+        const crossword = await dao.getCrossword(collectionId, userId);
 
         if (!crossword) {
             return res.status(StatusCodes.NOT_FOUND).json({
