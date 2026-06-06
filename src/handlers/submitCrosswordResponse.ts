@@ -5,16 +5,9 @@ import CruziDao from "cruzi-db";
 const dao = new CruziDao();
 
 /*
-Submits user response to a crossword clue. Updates the progress data for the given user and clue.
-
 Input: clueId (post body), userId (from middleware), hintsUsed (post body)
 
-For crossword clues, no correct response count is needed. Simply set the correct
-response count to 1. Set the hints used to the provided number.
-
-As a side effect, this call will update the progress data in user__collection.
-All hints used will be summed for all the clues in this crossword for the user, and
-that new value will be stored in user__collection.hints_used.
+Updates user__puzzle_clue table with the number of hints used for the given clue.
 
 Handles errors gracefully and returns appropriate HTTP status codes.
 */

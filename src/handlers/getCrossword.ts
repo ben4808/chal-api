@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { StatusCodes } from 'http-status-codes';
 import CruziDao from "cruzi-db";
+import { Publications } from "cruzi-models";
 
 const dao = new CruziDao();
 
@@ -46,6 +47,16 @@ function parseCrosswordDateParam(dateParam: string): Date | null {
     return null;
 }
 
+function resolvePublicationId(publicationId: string): string | null {
+    const normalized = publicationId.toLowerCase();
+    for (const publication of Object.values(Publications)) {
+        if (publication.id.toLowerCase() === normalized) {
+            return publication.id;
+        }
+    }
+    return null;
+}
+
 /*
 Retrieves info about a specific crossword puzzle.
 Accepts either:
@@ -77,7 +88,14 @@ export async function getCrossword(req: Request, res: Response) {
                 });
             }
 
-            collectionId = await dao.getCrosswordCollectionId(publicationId, date) ?? undefined;
+            const resolvedPublicationId = resolvePublicationId(publicationId);
+            if (!resolvedPublicationId) {
+                return res.status(StatusCodes.BAD_REQUEST).json({
+                    message: "Unknown publicationId.",
+                });
+            }
+
+            collectionId = await dao.getCrosswordCollectionId(resolvedPublicationId, date) ?? undefined;
             if (!collectionId) {
                 return res.status(StatusCodes.NOT_FOUND).json({
                     message: "Crossword not found for the specified publication and date.",

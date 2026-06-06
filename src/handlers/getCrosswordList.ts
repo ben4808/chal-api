@@ -16,7 +16,8 @@ The handler should handle errors gracefully and return appropriate HTTP status c
 export async function getCrosswordList(req: Request, res: Response) {
     try {
         const date = req.query.date ? new Date(req.query.date as string) : new Date();
-        const crosswords = await dao.getCrosswordList(date);
+        const userId = (req as any).userId as string | undefined;
+        const crosswords = await dao.getCrosswordList(date, userId);
 
         if (!crosswords || crosswords.length === 0) {
             return res.status(StatusCodes.NOT_FOUND).json({ message: "No crosswords found for the specified date." });

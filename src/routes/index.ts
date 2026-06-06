@@ -17,6 +17,7 @@ import { updateClueSense } from '../handlers/updateClueSense';
 import { makeAICall } from '../handlers/makeAICall';
 import { getCrosswordCalendar } from '../handlers/getCrosswordCalendar';
 import { submitCrosswordResponse } from '../handlers/submitCrosswordResponse';
+import { completeCrossword } from '../handlers/completeCrossword';
 import { vpcOnly } from '../middleware/vpcOnly';
 
 const apiRouter = Router();
@@ -29,6 +30,7 @@ apiRouter.get('/getCrosswordList', authenticateOptional, getCrosswordList);
 apiRouter.get('/getCrosswordCalendar', authenticateOptional, getCrosswordCalendar);
 apiRouter.get('/getCrossword', authenticateOptional, getCrossword);
 apiRouter.post('/submitCrosswordResponse', requireAuth, submitCrosswordResponse);
+apiRouter.post('/completeCrossword', requireAuth, completeCrossword);
 
 apiRouter.get('/getCollectionList', authenticateOptional, getCollectionList);
 apiRouter.get('/getCollectionById/:id', authenticateOptional, getCollectionById);
