@@ -28,7 +28,7 @@ Operations:
 2. Check if there was already a clue with this entry in the collection. If not, dreate a clue, 
    and add it to the database. Add the created clue to the given collection. If there was already
    such a clue, update it with the new information.
-  - If there are senses for the entry, set the clue's sense to the entry's sense with commonness "primary".
+  - If there are senses for the entry, set the clue's sense to the entry's sense with frequency "primary".
 3. If the clue was created, increment the clue count for the collection.
 4. If there are no senses for the entry, add a record to the entry_queue table for the entry.
 
@@ -99,10 +99,10 @@ export async function addCluesToCollection(req: Request, res: Response) {
                     customDisplayText: clue.clue?.customDisplayText,
                 };
 
-                // Step 4: If there are senses for the entry, set the clue's sense to the entry's sense with commonness "primary"
+                // Step 4: If there are senses for the entry, set the clue's sense to the entry's sense with frequency "primary"
                 if (hasSensesInDb || hasSensesInRequest) {
                     const allSenses = hasSensesInRequest ? sensesData : existingSenses;
-                    const primarySense = allSenses.find((s: Sense | any) => s.commonness === "primary");
+                    const primarySense = allSenses.find((s: Sense | any) => s.frequency === "primary");
                     if (primarySense) {
                         newClue.sense = { id: primarySense.id!, entry: newClue.entry } as SenseRef;
                     } else if (allSenses.length > 0) {

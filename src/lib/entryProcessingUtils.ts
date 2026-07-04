@@ -64,7 +64,7 @@ export async function processSenses(entry: Entry, sensesData: any[], dao: CruziD
             id: senseId,
             entry,
             partOfSpeech: inputSense.partOfSpeech,
-            commonness: inputSense.commonness,
+            frequency: inputSense.frequency,
             summary: pickLocalizedText(inputSense.summary),
             definition: pickLocalizedText(inputSense.definition),
             exampleSentences: convertExampleSentencesToModel(inputSense.exampleSentences, senseId),
