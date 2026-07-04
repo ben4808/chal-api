@@ -3,21 +3,21 @@
 FROM node:20-alpine AS builder
 
 WORKDIR /workspace/cruzi-models
-COPY --from=cruzi-models package*.json ./
-RUN npm ci
-COPY --from=cruzi-models . .
+COPY --from=cruzi-models package*.json tsconfig.json ./
+RUN npm ci --ignore-scripts
+COPY --from=cruzi-models src ./src
 RUN npm run build
 
 WORKDIR /workspace/cruzi-db
-COPY --from=cruzi-db package*.json ./
-RUN npm ci
-COPY --from=cruzi-db . .
+COPY --from=cruzi-db package*.json tsconfig.json ./
+RUN npm ci --ignore-scripts
+COPY --from=cruzi-db src ./src
 RUN npm run build
 
 WORKDIR /workspace/chal-api
-COPY package*.json ./
-RUN npm ci
-COPY . .
+COPY package*.json tsconfig.json ./
+RUN npm ci --ignore-scripts
+COPY src ./src
 RUN npm run build
 
 FROM node:20-alpine
