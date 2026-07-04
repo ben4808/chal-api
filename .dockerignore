@@ -1,0 +1,11 @@
+node_modules
+dist
+.env
+.git
+.gitignore
+.vscode
+*.md
+mock_data*.sql
+deploy.sh
+pull.sh
+LICENSE

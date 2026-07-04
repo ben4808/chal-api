@@ -13,12 +13,22 @@ services:
     restart: unless-stopped
 
   app:
-    image: cruzi:latest
+    image: ${CRUZI_IMAGE:-cruzi:latest}
+    build:
+      context: .
+      dockerfile: Dockerfile
+      additional_contexts:
+        cruzi-models: ../cruzi-models
+        cruzi-db: ../cruzi-db
     depends_on: [db]
     environment:
       DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
+      JWT_SECRET: ${JWT_SECRET}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
     ports:
       - "80:3000"
+    restart: unless-stopped
 
 volumes:
   pgdata:
