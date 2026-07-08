@@ -18,7 +18,8 @@ Within eligible clues:
 - Target Mix: Aim for 13 unseen clues and 7 seen clues.
   - Adjustment: If there are fewer than 13 unseen clues, fill the rest of the set with seen clues. 
     If there are fewer than 7 seen clues, fill the rest of the set with unseen clues. 
-- Ordering: Eligible clues should be selected based on the earliest last solve date.
+- Unseen selection: Pick randomly from all eligible unseen clues.
+- Seen selection: Pick based on earliest last solve date.
 - Final Step: The final selected batch must be randomized before being returned.
 
 Side Effects (only if a user is provided):
