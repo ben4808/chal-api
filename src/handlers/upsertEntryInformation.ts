@@ -35,7 +35,7 @@ export async function upsertEntryInformation(req: Request, res: Response) {
         let entry = {
             entry: entryData.entry,
             lang: entryData.lang,
-            rootEntry: entryData.rootEntry,
+            baseForm: entryData.baseForm,
             displayText: entryData.displayText,
             entryType: entryData.entryType,
         } as Entry;
