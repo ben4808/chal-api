@@ -9,7 +9,13 @@ app.use(express.json());
 app.use(express.urlencoded({extended: true}));
 app.use(cookieParser());
 app.use(cors({
-    origin: ["http://localhost:3000", "https://blockquarry.net", "http://localhost:5002", "http://localhost:5173"],
+    origin: (origin, callback) => {
+        if (!origin || /^http:\/\/localhost:\d+$/.test(origin) || origin === "https://blockquarry.net") {
+            callback(null, true);
+        } else {
+            callback(new Error(`Origin ${origin} not allowed by CORS`));
+        }
+    },
     credentials: true,
 }));
 
