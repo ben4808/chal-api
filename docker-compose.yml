@@ -10,6 +10,7 @@ services:
       - ../cruzi-db/sql/init:/docker-entrypoint-initdb.d
     ports:
       - "5432:5432"
+    networks: [shared]
     restart: unless-stopped
 
   app:
@@ -28,7 +29,12 @@ services:
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
     ports:
       - "80:3000"
+    networks: [shared]
     restart: unless-stopped
 
 volumes:
   pgdata:
+
+networks:
+  shared:
+    name: cruzi-shared
