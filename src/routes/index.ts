@@ -18,6 +18,9 @@ import { makeAICall } from '../handlers/makeAICall';
 import { getCrosswordCalendar } from '../handlers/getCrosswordCalendar';
 import { submitCrosswordResponse } from '../handlers/submitCrosswordResponse';
 import { completeCrossword } from '../handlers/completeCrossword';
+import { getUserSettings } from '../handlers/getUserSettings';
+import { updateUserSettings } from '../handlers/updateUserSettings';
+import { deleteClassifyEntry, getClassifyEntries, saveClassifyEntries } from '../handlers/classifyEntries';
 import { vpcOnly } from '../middleware/vpcOnly';
 
 const apiRouter = Router();
@@ -31,6 +34,8 @@ apiRouter.get('/getCrosswordCalendar', authenticateOptional, getCrosswordCalenda
 apiRouter.get('/getCrossword', authenticateOptional, getCrossword);
 apiRouter.post('/submitCrosswordResponse', requireAuth, submitCrosswordResponse);
 apiRouter.post('/completeCrossword', requireAuth, completeCrossword);
+apiRouter.get('/getUserSettings', requireAuth, getUserSettings);
+apiRouter.post('/updateUserSettings', requireAuth, updateUserSettings);
 
 apiRouter.get('/getCollectionList', authenticateOptional, getCollectionList);
 apiRouter.get('/getCollectionById/:id', authenticateOptional, getCollectionById);
@@ -47,6 +52,9 @@ apiRouter.post('/addCluesToCollection', addCluesToCollection);
 apiRouter.post('/removeClueFromCollection', removeClueFromCollection);
 apiRouter.post('/upsertEntryInformation', upsertEntryInformation);
 apiRouter.post('/updateClueSense', updateClueSense);
+apiRouter.post('/classify/entries', getClassifyEntries);
+apiRouter.post('/classify/save', saveClassifyEntries);
+apiRouter.post('/classify/delete', deleteClassifyEntry);
 
 // AI call endpoint - restricted to VPC/localhost only with 2-minute timeout
 apiRouter.post('/makeAICall', async (req, res) => {
