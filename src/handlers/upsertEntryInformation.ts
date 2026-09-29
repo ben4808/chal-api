@@ -37,7 +37,7 @@ export async function upsertEntryInformation(req: Request, res: Response) {
             lang: entryData.lang,
             baseForm: entryData.baseForm,
             displayText: entryData.displayText,
-            entryType: entryData.entryType,
+            classification: entryData.classification,
         } as Entry;
 
         // Upsert the entry

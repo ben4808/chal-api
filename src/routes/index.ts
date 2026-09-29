@@ -20,7 +20,7 @@ import { submitCrosswordResponse } from '../handlers/submitCrosswordResponse';
 import { completeCrossword } from '../handlers/completeCrossword';
 import { getUserSettings } from '../handlers/getUserSettings';
 import { updateUserSettings } from '../handlers/updateUserSettings';
-import { deleteClassifyEntry, getClassifyEntries, saveClassifyEntries } from '../handlers/classifyEntries';
+import { getClassifyEntries, saveClassifyEntries } from '../handlers/classifyEntries';
 import { vpcOnly } from '../middleware/vpcOnly';
 
 const apiRouter = Router();
@@ -54,7 +54,6 @@ apiRouter.post('/upsertEntryInformation', upsertEntryInformation);
 apiRouter.post('/updateClueSense', updateClueSense);
 apiRouter.post('/classify/entries', getClassifyEntries);
 apiRouter.post('/classify/save', saveClassifyEntries);
-apiRouter.post('/classify/delete', deleteClassifyEntry);
 
 // AI call endpoint - restricted to VPC/localhost only with 2-minute timeout
 apiRouter.post('/makeAICall', async (req, res) => {

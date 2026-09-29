@@ -65,7 +65,7 @@ export async function addCluesToCollection(req: Request, res: Response) {
                 lang: entryData.lang,
                 baseForm: entryData.baseForm,
                 displayText: entryData.displayText,
-                entryType: entryData.entryType,
+                classification: entryData.classification,
                 loadingStatus: loadingStatus,
             } as Entry;
 
