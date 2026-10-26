@@ -36,6 +36,7 @@ interface ClassifyRowInput {
     isVulgar?: boolean;
     isCrosswordese?: boolean;
     isBreakfast?: boolean;
+    isReviewed?: boolean;
     isSensitive?: boolean;
     senseId?: string | null;
 }
@@ -246,6 +247,7 @@ export async function saveClassifyEntries(req: Request, res: Response) {
                 familiarityBucket: row.familiarityBucket || null,
                 qualityBucket: row.qualityBucket || null,
                 isVulgar: !!row.isVulgar,
+                humanReviewed: !!row.isReviewed,
             });
             tags.push(...collectManualTags(original, row));
             applyFlagTagChange(original, row, 'isVulgar', VULGAR_TAG, flagAdds, flagDeletes);

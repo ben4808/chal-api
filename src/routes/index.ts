@@ -22,6 +22,12 @@ import { getUserSettings } from '../handlers/getUserSettings';
 import { updateUserSettings } from '../handlers/updateUserSettings';
 import { getClassifyEntries, saveClassifyEntries } from '../handlers/classifyEntries';
 import { vpcOnly } from '../middleware/vpcOnly';
+import {
+    getMagicPuzzleEntryClues,
+    getMagicPuzzleFillerEntries,
+    getMagicPuzzleSeedEntries,
+    saveMagicPuzzleGeneratedClues,
+} from '../handlers/magicPuzzle';
 
 const apiRouter = Router();
 
@@ -54,6 +60,10 @@ apiRouter.post('/upsertEntryInformation', upsertEntryInformation);
 apiRouter.post('/updateClueSense', updateClueSense);
 apiRouter.post('/classify/entries', getClassifyEntries);
 apiRouter.post('/classify/save', saveClassifyEntries);
+apiRouter.post('/magicPuzzle/seedEntries', getMagicPuzzleSeedEntries);
+apiRouter.post('/magicPuzzle/fillerEntries', getMagicPuzzleFillerEntries);
+apiRouter.post('/magicPuzzle/entryClues', getMagicPuzzleEntryClues);
+apiRouter.post('/magicPuzzle/generatedClues', saveMagicPuzzleGeneratedClues);
 
 // AI call endpoint - restricted to VPC/localhost only with 2-minute timeout
 apiRouter.post('/makeAICall', async (req, res) => {
