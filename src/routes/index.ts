@@ -23,9 +23,15 @@ import { updateUserSettings } from '../handlers/updateUserSettings';
 import { getClassifyEntries, saveClassifyEntries } from '../handlers/classifyEntries';
 import { vpcOnly } from '../middleware/vpcOnly';
 import {
+    getMagicPuzzleCommunityClues,
     getMagicPuzzleEntryClues,
     getMagicPuzzleFillerEntries,
     getMagicPuzzleSeedEntries,
+    deleteMagicPuzzleGeneratedClue,
+    ensureMagicPuzzleSeedEntry,
+    getMagicPuzzleById,
+    saveMagicPuzzleDontUse,
+    saveMagicPuzzleFinish,
     saveMagicPuzzleGeneratedClues,
 } from '../handlers/magicPuzzle';
 
@@ -64,6 +70,12 @@ apiRouter.post('/magicPuzzle/seedEntries', getMagicPuzzleSeedEntries);
 apiRouter.post('/magicPuzzle/fillerEntries', getMagicPuzzleFillerEntries);
 apiRouter.post('/magicPuzzle/entryClues', getMagicPuzzleEntryClues);
 apiRouter.post('/magicPuzzle/generatedClues', saveMagicPuzzleGeneratedClues);
+apiRouter.post('/magicPuzzle/deleteGeneratedClue', deleteMagicPuzzleGeneratedClue);
+apiRouter.post('/magicPuzzle/communityClues', getMagicPuzzleCommunityClues);
+apiRouter.post('/magicPuzzle/ensureSeedEntry', ensureMagicPuzzleSeedEntry);
+apiRouter.post('/magicPuzzle/dontUse', saveMagicPuzzleDontUse);
+apiRouter.get('/magicPuzzle/:id', getMagicPuzzleById);
+apiRouter.post('/magicPuzzle/finish', saveMagicPuzzleFinish);
 
 // AI call endpoint - restricted to VPC/localhost only with 2-minute timeout
 apiRouter.post('/makeAICall', async (req, res) => {

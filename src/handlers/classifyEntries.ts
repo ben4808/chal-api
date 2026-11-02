@@ -19,6 +19,7 @@ const MANUAL_TAGS: Record<string, string> = {
 };
 
 const CROSSWORDESE_TAG = 'crosswordese';
+const OVERUSED_TAG = 'overused';
 const BREAKFAST_TAG = 'breakfast_test';
 const SENSITIVE_TAG = 'sensitive';
 const VULGAR_TAG = 'vulgar';
@@ -35,6 +36,7 @@ interface ClassifyRowInput {
     qualityBucket?: string | null;
     isVulgar?: boolean;
     isCrosswordese?: boolean;
+    isOverused?: boolean;
     isBreakfast?: boolean;
     isReviewed?: boolean;
     isSensitive?: boolean;
@@ -124,7 +126,7 @@ function flagTag(row: ClassifyRowInput, tag: string): EntryTagChange {
 function applyFlagTagChange(
     original: ClassifyRowInput | undefined,
     row: ClassifyRowInput,
-    field: 'isCrosswordese' | 'isBreakfast' | 'isSensitive' | 'isVulgar',
+    field: 'isCrosswordese' | 'isOverused' | 'isBreakfast' | 'isSensitive' | 'isVulgar',
     tag: string,
     adds: EntryTagChange[],
     deletes: EntryTagChange[],
@@ -216,6 +218,7 @@ export async function saveClassifyEntries(req: Request, res: Response) {
 
             if (row.entry && row.lang) {
                 applyFlagTagChange(original, row, 'isCrosswordese', CROSSWORDESE_TAG, flagAdds, flagDeletes);
+                applyFlagTagChange(original, row, 'isOverused', OVERUSED_TAG, flagAdds, flagDeletes);
                 applyFlagTagChange(original, row, 'isBreakfast', BREAKFAST_TAG, flagAdds, flagDeletes);
             }
 
