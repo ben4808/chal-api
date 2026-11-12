@@ -37,11 +37,33 @@ export async function getMagicPuzzleSeedEntries(req: Request, res: Response) {
             return res.status(StatusCodes.BAD_REQUEST).json({ error: 'length must be an integer >= 3' });
         }
         const count = asPositiveInt(req.body?.count, 10);
-        const familiarityBucket = String(req.body?.familiarityBucket || 'General Knowledge');
         const lang = String(req.body?.lang || 'en');
+        const requestedBuckets: string[] = Array.isArray(req.body?.familiarityBuckets)
+            ? req.body.familiarityBuckets.map((bucket: unknown) => String(bucket || '').trim()).filter(Boolean)
+            : [];
+        const familiarityBuckets = requestedBuckets.length > 0
+            ? Array.from(new Set(requestedBuckets))
+            : [String(req.body?.familiarityBucket || 'General Knowledge')];
 
-        const entries = await getRandomSeedEntries(length, familiarityBucket, count, lang);
-        return res.status(StatusCodes.OK).json({ entries });
+        // Take up to `count` random entries from every bucket, then keep a random `count` of
+        // the pool, so the buckets are mixed with no fixed proportion.
+        const excludeSeedwordClues = req.body?.excludeSeedwordClues === true;
+        const pools = await Promise.all(
+            familiarityBuckets.map((bucket) =>
+                getRandomSeedEntries(length, bucket, count, lang, excludeSeedwordClues),
+            ),
+        );
+        const seen = new Set<string>();
+        const pool = pools.flat().filter((entry) => {
+            if (seen.has(entry.entry)) return false;
+            seen.add(entry.entry);
+            return true;
+        });
+        for (let i = pool.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [pool[i], pool[j]] = [pool[j], pool[i]];
+        }
+        return res.status(StatusCodes.OK).json({ entries: pool.slice(0, count) });
     } catch (error: any) {
         console.error('magic puzzle seed entries error:', error);
         return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({

@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { StatusCodes } from 'http-status-codes';
 import * as dotenv from 'dotenv';
+import { generateWithCursor, hasCursorApiKey, isCursorModel } from '../lib/cursorAi';
 
 // Load environment variables
 dotenv.config();
@@ -34,18 +35,45 @@ async function generateWithModel(modelId: string, prompt: string): Promise<strin
 }
 
 /**
- * Handler for making AI calls using Gemini.
+ * Handler for making AI calls. Uses Gemini by default.
  * Accepts a prompt in the request body and returns the AI response.
+ * An optional `model` (currently only "grok-4.6") routes the call through the Cursor SDK instead.
  * Based on the generateResultsAsync function from gemini.ts
  */
 export async function makeAICall(req: Request, res: Response) {
     try {
-        const { prompt } = req.body;
+        const { prompt, model } = req.body;
 
         if (!prompt || typeof prompt !== 'string') {
             return res.status(StatusCodes.BAD_REQUEST).json({
                 message: 'Prompt is required and must be a string.'
             });
+        }
+
+        if (model !== undefined && model !== null && model !== '') {
+            if (!isCursorModel(model)) {
+                return res.status(StatusCodes.BAD_REQUEST).json({
+                    message: `Unsupported model "${String(model)}".`
+                });
+            }
+            if (!hasCursorApiKey()) {
+                return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+                    message: 'Cursor API key not configured (set CURSOR_API_KEY).'
+                });
+            }
+            try {
+                const text = await generateWithCursor(model, prompt);
+                return res.status(StatusCodes.OK).json({
+                    response: text,
+                    success: true
+                });
+            } catch (error) {
+                console.error(`Error making AI call with ${model}:`, error);
+                return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+                    message: `The ${model} request failed: ${error instanceof Error ? error.message : String(error)}`,
+                    success: false
+                });
+            }
         }
 
         if (!process.env.GEMINI_API_KEY) {

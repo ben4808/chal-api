@@ -12,10 +12,12 @@ import {
 
 const MANUAL_TAGS: Record<string, string> = {
     displayText: 'manual_display',
+    baseForm: 'manual_base_form',
     classification: 'manual_classification',
     unityBucket: 'manual unity',
     familiarityBucket: 'manual familiarity',
     qualityBucket: 'manual quality',
+    crosswordBucket: 'manual crossword',
 };
 
 const CROSSWORDESE_TAG = 'crosswordese';
@@ -23,6 +25,13 @@ const OVERUSED_TAG = 'overused';
 const BREAKFAST_TAG = 'breakfast_test';
 const SENSITIVE_TAG = 'sensitive';
 const VULGAR_TAG = 'vulgar';
+const GROSS_TAG = 'gross';
+
+const UNPLEASANT_TAGS: Record<string, string> = {
+    Vulgar: VULGAR_TAG,
+    Sensitive: SENSITIVE_TAG,
+    Gross: GROSS_TAG,
+};
 
 interface ClassifyRowInput {
     rowId?: string;
@@ -30,16 +39,20 @@ interface ClassifyRowInput {
     entry?: string | null;
     lang?: string | null;
     displayText?: string | null;
+    baseForm?: string | null;
     classification?: string | null;
     unityBucket?: string | null;
     familiarityBucket?: string | null;
     qualityBucket?: string | null;
+    crosswordBucket?: string | null;
+    unpleasant?: string;
     isVulgar?: boolean;
     isCrosswordese?: boolean;
     isOverused?: boolean;
     isBreakfast?: boolean;
     isReviewed?: boolean;
     isSensitive?: boolean;
+    isGross?: boolean;
     senseId?: string | null;
 }
 
@@ -78,10 +91,12 @@ function collectManualTags(original: ClassifyRowInput | undefined, updated: Clas
     };
 
     pushIfChanged('displayText', original?.displayText, updated.displayText);
+    pushIfChanged('baseForm', original?.baseForm, updated.baseForm);
     pushIfChanged('classification', original?.classification, updated.classification);
     pushIfChanged('unityBucket', original?.unityBucket, updated.unityBucket);
     pushIfChanged('familiarityBucket', original?.familiarityBucket, updated.familiarityBucket);
     pushIfChanged('qualityBucket', original?.qualityBucket, updated.qualityBucket);
+    pushIfChanged('crosswordBucket', original?.crosswordBucket, updated.crosswordBucket);
 
     return tags;
 }
@@ -126,7 +141,7 @@ function flagTag(row: ClassifyRowInput, tag: string): EntryTagChange {
 function applyFlagTagChange(
     original: ClassifyRowInput | undefined,
     row: ClassifyRowInput,
-    field: 'isCrosswordese' | 'isOverused' | 'isBreakfast' | 'isSensitive' | 'isVulgar',
+    field: 'isCrosswordese' | 'isOverused' | 'isBreakfast' | 'isSensitive' | 'isVulgar' | 'isGross',
     tag: string,
     adds: EntryTagChange[],
     deletes: EntryTagChange[],
@@ -139,10 +154,35 @@ function applyFlagTagChange(
     else deletes.push(flagTag(row, tag));
 }
 
+function unpleasantOf(row: ClassifyRowInput | undefined): string {
+    if (!row) return '';
+    if (row.unpleasant) return row.unpleasant;
+    if (row.isVulgar) return 'Vulgar';
+    if (row.isSensitive) return 'Sensitive';
+    if (row.isGross) return 'Gross';
+    return '';
+}
+
+function applyUnpleasantChange(
+    original: ClassifyRowInput | undefined,
+    row: ClassifyRowInput,
+    adds: EntryTagChange[],
+    deletes: EntryTagChange[],
+) {
+    if (!row.entry || !row.lang) return;
+    const oldVal = unpleasantOf(original);
+    const newVal = unpleasantOf(row);
+    if (oldVal === newVal) return;
+    const oldTag = UNPLEASANT_TAGS[oldVal];
+    const newTag = UNPLEASANT_TAGS[newVal];
+    if (oldTag) deletes.push(flagTag(row, oldTag));
+    if (newTag) adds.push(flagTag(row, newTag));
+}
+
 function applySenseFlagTagChange(
     original: ClassifyRowInput | undefined,
     row: ClassifyRowInput,
-    field: 'isVulgar' | 'isSensitive',
+    field: 'isVulgar' | 'isSensitive' | 'isGross',
     tag: string,
     adds: SenseTagChange[],
     deletes: SenseTagChange[],
@@ -161,7 +201,8 @@ function classificationFieldsEqual(a: ClassifyRowInput | undefined, b: ClassifyR
         && textVal(a?.classification) === textVal(b.classification)
         && textVal(a?.unityBucket) === textVal(b.unityBucket)
         && textVal(a?.familiarityBucket) === textVal(b.familiarityBucket)
-        && textVal(a?.qualityBucket) === textVal(b.qualityBucket);
+        && textVal(a?.qualityBucket) === textVal(b.qualityBucket)
+        && textVal(a?.crosswordBucket) === textVal(b.crosswordBucket);
 }
 
 function parseClassifyItems(body: any): Array<{ fillWord: string; senseId?: string | null }> {
@@ -236,6 +277,7 @@ export async function saveClassifyEntries(req: Request, res: Response) {
                 }
                 applySenseFlagTagChange(original, row, 'isVulgar', VULGAR_TAG, senseFlagAdds, senseFlagDeletes);
                 applySenseFlagTagChange(original, row, 'isSensitive', SENSITIVE_TAG, senseFlagAdds, senseFlagDeletes);
+                applySenseFlagTagChange(original, row, 'isGross', GROSS_TAG, senseFlagAdds, senseFlagDeletes);
                 continue;
             }
 
@@ -243,18 +285,17 @@ export async function saveClassifyEntries(req: Request, res: Response) {
             entryUpdates.push({
                 entry: row.entry,
                 lang: row.lang,
-                baseForm: null,
+                baseForm: row.baseForm || null,
                 displayText: row.displayText || null,
                 classification: row.classification || null,
                 unityBucket: row.unityBucket || null,
                 familiarityBucket: row.familiarityBucket || null,
                 qualityBucket: row.qualityBucket || null,
-                isVulgar: !!row.isVulgar,
+                crosswordBucket: row.crosswordBucket || null,
                 humanReviewed: !!row.isReviewed,
             });
             tags.push(...collectManualTags(original, row));
-            applyFlagTagChange(original, row, 'isVulgar', VULGAR_TAG, flagAdds, flagDeletes);
-            applyFlagTagChange(original, row, 'isSensitive', SENSITIVE_TAG, flagAdds, flagDeletes);
+            applyUnpleasantChange(original, row, flagAdds, flagDeletes);
         }
 
         await updateEntryClassifications(entryUpdates);
