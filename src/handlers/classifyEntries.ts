@@ -3,6 +3,7 @@ import { StatusCodes } from 'http-status-codes';
 import {
     addEntryTags,
     addSenseTags,
+    deleteEntries,
     deleteEntryTags,
     deleteSenseTags,
     getEntriesForClassification,
@@ -221,6 +222,23 @@ function parseClassifyItems(body: any): Array<{ fillWord: string; senseId?: stri
             .map((fillWord: string) => ({ fillWord }));
     }
     return [];
+}
+
+export async function deleteClassifyEntry(req: Request, res: Response) {
+    try {
+        const entry = req.body?.entry ? String(req.body.entry).trim() : '';
+        const lang = req.body?.lang ? String(req.body.lang).trim() : 'en';
+        if (!entry) {
+            return res.status(StatusCodes.BAD_REQUEST).json({ error: 'Entry is required' });
+        }
+        const deleted = await deleteEntries([{ entry, lang }]);
+        return res.status(StatusCodes.OK).json({ deleted });
+    } catch (error: any) {
+        console.error('classify delete error:', error);
+        return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+            error: error?.message || 'An error occurred while deleting the entry.',
+        });
+    }
 }
 
 export async function getClassifyEntries(req: Request, res: Response) {

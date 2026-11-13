@@ -20,7 +20,8 @@ import { submitCrosswordResponse } from '../handlers/submitCrosswordResponse';
 import { completeCrossword } from '../handlers/completeCrossword';
 import { getUserSettings } from '../handlers/getUserSettings';
 import { updateUserSettings } from '../handlers/updateUserSettings';
-import { getClassifyEntries, saveClassifyEntries } from '../handlers/classifyEntries';
+import { deleteClassifyEntry, getClassifyEntries, saveClassifyEntries } from '../handlers/classifyEntries';
+import { getExplorerEntries } from '../handlers/explorerEntries';
 import { vpcOnly } from '../middleware/vpcOnly';
 import {
     getMagicPuzzleCommunityClues,
@@ -66,6 +67,8 @@ apiRouter.post('/upsertEntryInformation', upsertEntryInformation);
 apiRouter.post('/updateClueSense', updateClueSense);
 apiRouter.post('/classify/entries', getClassifyEntries);
 apiRouter.post('/classify/save', saveClassifyEntries);
+apiRouter.post('/classify/delete', deleteClassifyEntry);
+apiRouter.post('/explorer/entries', getExplorerEntries);
 apiRouter.post('/magicPuzzle/seedEntries', getMagicPuzzleSeedEntries);
 apiRouter.post('/magicPuzzle/fillerEntries', getMagicPuzzleFillerEntries);
 apiRouter.post('/magicPuzzle/entryClues', getMagicPuzzleEntryClues);
