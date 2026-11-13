@@ -1,4 +1,4 @@
-import { Agent, JsonlLocalAgentStore, type ModelSelection } from '@cursor/sdk';
+import { Agent, Cursor, JsonlLocalAgentStore, type ModelSelection } from '@cursor/sdk';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
@@ -21,6 +21,8 @@ const CURSOR_MODEL_SELECTION: Record<CursorModel, ModelSelection> = {
 };
 
 const CURSOR_REQUEST_TIMEOUT_MS = 110_000;
+const CURSOR_GATEWAY_ATTEMPTS = 3;
+const CURSOR_GATEWAY_RETRY_DELAY_MS = 1_500;
 
 export function isCursorModel(value: unknown): value is CursorModel {
     return typeof value === 'string' && Object.prototype.hasOwnProperty.call(CURSOR_MODEL_SELECTION, value);
@@ -32,6 +34,7 @@ export function hasCursorApiKey(): boolean {
 
 let sharedEmptyWorkspaceCwd: string | undefined;
 let sharedLocalStore: JsonlLocalAgentStore | undefined;
+let didConfigureCursor = false;
 
 /**
  * Empty workspace so the agent answers as a text model instead of exploring this repo.
@@ -46,8 +49,8 @@ function getCursorWorkspaceCwd(): string {
 }
 
 /**
- * Default SDK storage uses node:sqlite (Node >= 22.13). This API runs on Node 20
- * (Docker and typical local), so persist with JSONL instead.
+ * Default SDK storage uses node:sqlite (Node >= 22.13). chal-api uses JSONL so
+ * local Node 20 and any runtime without node:sqlite still work.
  */
 function getCursorLocalStore(): JsonlLocalAgentStore {
     if (!sharedLocalStore) {
@@ -59,6 +62,22 @@ function getCursorLocalStore(): JsonlLocalAgentStore {
     return sharedLocalStore;
 }
 
+/**
+ * Local agent inference still streams through Cursor's hosted API. HTTP/2 (the
+ * SDK default) often surfaces as an HTML 502 from a gateway/proxy; HTTP/1.1 SSE
+ * is the documented workaround.
+ */
+function ensureCursorConfigured(): void {
+    if (didConfigureCursor) return;
+    Cursor.configure({
+        local: {
+            store: getCursorLocalStore(),
+            useHttp1ForAgent: true,
+        },
+    });
+    didConfigureCursor = true;
+}
+
 function buildTextOnlyPrompt(prompt: string): string {
     return [
         'You are a text-generation API. Reply with only the final answer text.',
@@ -66,6 +85,24 @@ function buildTextOnlyPrompt(prompt: string): string {
         '',
         prompt,
     ].join('\n');
+}
+
+function cursorErrorMessage(error: unknown): string {
+    const message = error instanceof Error ? error.message : String(error);
+    if (/502|Bad Gateway/i.test(message)) {
+        return 'Cursor API returned 502 Bad Gateway';
+    }
+    const stripped = message.replace(/<html[\s\S]*/i, '').replace(/^\[unknown]\s*/i, '').trim();
+    return stripped || message;
+}
+
+function isRetryableCursorGatewayError(error: unknown): boolean {
+    const message = error instanceof Error ? error.message : String(error);
+    return /502|503|429|Bad Gateway|UNAVAILABLE|rate limit|high demand/i.test(message);
+}
+
+function sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
@@ -85,18 +122,14 @@ async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T
     }
 }
 
-/**
- * One text generation through the Cursor SDK. Callers (the web apps) retry failures,
- * so this makes a single attempt rather than sleeping through long backoffs.
- */
-export async function generateWithCursor(model: CursorModel, prompt: string): Promise<string> {
-    const apiKey = process.env.CURSOR_API_KEY?.trim();
-    if (!apiKey) throw new Error('CURSOR_API_KEY environment variable is not set');
-
+async function promptCursorOnce(model: CursorModel, prompt: string, apiKey: string): Promise<string> {
+    ensureCursorConfigured();
     const result = await withTimeout(
         Agent.prompt(buildTextOnlyPrompt(prompt), {
             apiKey,
             model: CURSOR_MODEL_SELECTION[model],
+            // Text only — skip the default tool loop (shell/search) on this empty cwd.
+            tools: [],
             local: {
                 cwd: getCursorWorkspaceCwd(),
                 store: getCursorLocalStore(),
@@ -116,4 +149,32 @@ export async function generateWithCursor(model: CursorModel, prompt: string): Pr
     const text = result.result?.trim();
     if (!text) throw new Error('Cursor API returned an empty response');
     return text;
+}
+
+/**
+ * One text generation through the Cursor SDK. Retries only fast gateway flakes
+ * (502/503/429); the web apps still handle longer application-level retries.
+ */
+export async function generateWithCursor(model: CursorModel, prompt: string): Promise<string> {
+    const apiKey = process.env.CURSOR_API_KEY?.trim();
+    if (!apiKey) throw new Error('CURSOR_API_KEY environment variable is not set');
+
+    let lastError: unknown;
+    for (let attempt = 1; attempt <= CURSOR_GATEWAY_ATTEMPTS; attempt++) {
+        try {
+            return await promptCursorOnce(model, prompt, apiKey);
+        } catch (error) {
+            lastError = error;
+            if (attempt < CURSOR_GATEWAY_ATTEMPTS && isRetryableCursorGatewayError(error)) {
+                console.warn(
+                    `Cursor ${model} gateway error (attempt ${attempt}/${CURSOR_GATEWAY_ATTEMPTS}): ${cursorErrorMessage(error)}`,
+                );
+                await sleep(CURSOR_GATEWAY_RETRY_DELAY_MS);
+                continue;
+            }
+            throw new Error(cursorErrorMessage(error));
+        }
+    }
+
+    throw new Error(cursorErrorMessage(lastError));
 }
