@@ -1,4 +1,4 @@
-import { Agent, type ModelSelection } from '@cursor/sdk';
+import { Agent, JsonlLocalAgentStore, type ModelSelection } from '@cursor/sdk';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
@@ -31,6 +31,7 @@ export function hasCursorApiKey(): boolean {
 }
 
 let sharedEmptyWorkspaceCwd: string | undefined;
+let sharedLocalStore: JsonlLocalAgentStore | undefined;
 
 /**
  * Empty workspace so the agent answers as a text model instead of exploring this repo.
@@ -42,6 +43,20 @@ function getCursorWorkspaceCwd(): string {
         sharedEmptyWorkspaceCwd = fs.mkdtempSync(path.join(os.tmpdir(), 'chal-cursor-ai-'));
     }
     return sharedEmptyWorkspaceCwd;
+}
+
+/**
+ * Default SDK storage uses node:sqlite (Node >= 22.13). This API runs on Node 20
+ * (Docker and typical local), so persist with JSONL instead.
+ */
+function getCursorLocalStore(): JsonlLocalAgentStore {
+    if (!sharedLocalStore) {
+        const rootDir = process.env.CURSOR_AI_STORE_DIR
+            ?? path.join(getCursorWorkspaceCwd(), '.cursor-agent-store');
+        fs.mkdirSync(rootDir, { recursive: true });
+        sharedLocalStore = new JsonlLocalAgentStore(rootDir);
+    }
+    return sharedLocalStore;
 }
 
 function buildTextOnlyPrompt(prompt: string): string {
@@ -84,6 +99,7 @@ export async function generateWithCursor(model: CursorModel, prompt: string): Pr
             model: CURSOR_MODEL_SELECTION[model],
             local: {
                 cwd: getCursorWorkspaceCwd(),
+                store: getCursorLocalStore(),
                 // Inline config only — do not load project/user Cursor settings.
                 settingSources: [],
             },
