@@ -10,8 +10,9 @@ app.use(express.urlencoded({extended: true}));
 app.use(cookieParser());
 app.use(cors({
     origin: (origin, callback) => {
-        if (!origin || /^http:\/\/localhost:\d+$/.test(origin) || origin === "https://blockquarry.net" 
-        || origin === "https://cruzi.net" || origin === "https://friendlywords.com") {
+        if (!origin || /^http:\/\/localhost:\d+$/.test(origin) || origin === "https://blockquarry.net"
+        || origin === "https://cruzi.net" || origin === "https://friendlywords.com"
+        || origin === "https://ben4808.github.io") {
             callback(null, true);
         } else {
             callback(new Error(`Origin ${origin} not allowed by CORS`));
