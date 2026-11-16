@@ -28,6 +28,7 @@ services:
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       CURSOR_API_KEY: ${CURSOR_API_KEY:-}
+      MUSE_API_KEY: ${MUSE_API_KEY:-}
     ports:
       - "80:3000"
     networks: [shared]

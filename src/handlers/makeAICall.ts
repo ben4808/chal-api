@@ -3,6 +3,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { StatusCodes } from 'http-status-codes';
 import * as dotenv from 'dotenv';
 import { generateWithCursor, hasCursorApiKey, isCursorModel } from '../lib/cursorAi';
+import { generateWithMuse, hasMuseApiKey, isMuseModel } from '../lib/museAi';
 
 // Load environment variables
 dotenv.config();
@@ -37,7 +38,8 @@ async function generateWithModel(modelId: string, prompt: string): Promise<strin
 /**
  * Handler for making AI calls. Uses Gemini by default.
  * Accepts a prompt in the request body and returns the AI response.
- * An optional `model` (currently only "grok-4.6") routes the call through the Cursor SDK instead.
+ * An optional `model` routes the call elsewhere: "grok-4.6" through the Cursor SDK,
+ * "muse-ember" through Muse Ember at high reasoning effort.
  * Based on the generateResultsAsync function from gemini.ts
  */
 export async function makeAICall(req: Request, res: Response) {
@@ -51,6 +53,26 @@ export async function makeAICall(req: Request, res: Response) {
         }
 
         if (model !== undefined && model !== null && model !== '') {
+            if (isMuseModel(model)) {
+                if (!hasMuseApiKey()) {
+                    return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+                        message: 'Muse API key not configured (set MUSE_API_KEY).'
+                    });
+                }
+                try {
+                    const text = await generateWithMuse(prompt);
+                    return res.status(StatusCodes.OK).json({
+                        response: text,
+                        success: true
+                    });
+                } catch (error) {
+                    console.error(`Error making AI call with ${model}:`, error);
+                    return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+                        message: `The ${model} request failed: ${error instanceof Error ? error.message : String(error)}`,
+                        success: false
+                    });
+                }
+            }
             if (!isCursorModel(model)) {
                 return res.status(StatusCodes.BAD_REQUEST).json({
                     message: `Unsupported model "${String(model)}".`

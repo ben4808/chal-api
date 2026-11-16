@@ -30,14 +30,79 @@ function normalizeSeed(text: string): string {
     return text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z]/g, '');
 }
 
+function shuffleInPlace<T>(items: T[]): void {
+    for (let i = items.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [items[i], items[j]] = [items[j], items[i]];
+    }
+}
+
+/**
+ * A fixed number of random entries from each familiarity bucket, kept in quota order.
+ * Length is a range (for example 5-7): each length is queried, then the bucket's quota
+ * is drawn from that pool.
+ */
+async function seedEntriesForQuotas(req: Request, lang: string) {
+    const minLength = asPositiveInt(req.body?.minLength, 0);
+    const maxLength = asPositiveInt(req.body?.maxLength, 0);
+    if (minLength < 3 || maxLength < minLength || maxLength > 15) {
+        return { error: 'minLength and maxLength must be integers from 3 to 15, with minLength <= maxLength' };
+    }
+    const quotas: { familiarityBucket?: unknown; count?: unknown }[] = req.body?.quotas;
+    if (!Array.isArray(quotas) || quotas.length === 0) {
+        return { error: 'quotas must include at least one bucket' };
+    }
+
+    const exclude = new Set<string>(
+        (Array.isArray(req.body?.excludeEntries) ? req.body.excludeEntries : [])
+            .map((entry: unknown) => normalizeSeed(String(entry || '')))
+            .filter(Boolean),
+    );
+    const lengths: number[] = [];
+    for (let length = minLength; length <= maxLength; length++) lengths.push(length);
+
+    const chosen: Awaited<ReturnType<typeof getRandomSeedEntries>> = [];
+    for (const quota of quotas) {
+        const bucket = String(quota?.familiarityBucket || '').trim();
+        const count = asPositiveInt(quota?.count, 0);
+        if (!bucket || count < 1) {
+            return { error: 'each quota needs a familiarityBucket and a positive count' };
+        }
+        const fetchCount = Math.min(50, count + exclude.size);
+        const pools = await Promise.all(
+            lengths.map((length) => getRandomSeedEntries(length, bucket, fetchCount, lang, false)),
+        );
+        const seen = new Set<string>();
+        const pool = pools.flat().filter((entry) => {
+            if (exclude.has(entry.entry) || seen.has(entry.entry)) return false;
+            seen.add(entry.entry);
+            return true;
+        });
+        shuffleInPlace(pool);
+        for (const entry of pool.slice(0, count)) {
+            exclude.add(entry.entry);
+            chosen.push(entry);
+        }
+    }
+    return { entries: chosen };
+}
+
 export async function getMagicPuzzleSeedEntries(req: Request, res: Response) {
     try {
+        const lang = String(req.body?.lang || 'en');
+        if (Array.isArray(req.body?.quotas)) {
+            const result = await seedEntriesForQuotas(req, lang);
+            if ('error' in result) {
+                return res.status(StatusCodes.BAD_REQUEST).json({ error: result.error });
+            }
+            return res.status(StatusCodes.OK).json({ entries: result.entries });
+        }
+
         const length = asPositiveInt(req.body?.length, 0);
         if (length < 3) {
             return res.status(StatusCodes.BAD_REQUEST).json({ error: 'length must be an integer >= 3' });
         }
         const count = asPositiveInt(req.body?.count, 10);
-        const lang = String(req.body?.lang || 'en');
         const requestedBuckets: string[] = Array.isArray(req.body?.familiarityBuckets)
             ? req.body.familiarityBuckets.map((bucket: unknown) => String(bucket || '').trim()).filter(Boolean)
             : [];
